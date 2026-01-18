@@ -30,9 +30,10 @@ function App() {
   const [locationData, setLocationData] = useState(null);
   const [chartData, setChartData] = useState([]);
   const [forecastData, setForecastData] = useState([]);
-  const [atmosphericState, setAtmosphericState] = useState({ isDay: true, sunAltitudePct: 20, isCloudy: false, isRain: false, isWindy: false });
+  const [atmosphericState, setAtmosphericState] = useState({ isDay: true, sunAltitudePct: 20, isCloudy: false, isRain: false, isWindy: false, isHazy: false });
   const [mapView, setMapView] = useState({ center: [0, 20], zoom: 100 }); 
   const [currentFact, setCurrentFact] = useState(AIR_FACTS[0]);
+  const [exposureTime, setExposureTime] = useState(1); // Default 1 hour exposure
 
   useEffect(() => { 
       fetchRealLocation("Delhi"); 
@@ -139,14 +140,13 @@ function App() {
         altitudePercentage = 80 - (normalizedMoonAlt * 70);
     }
 
-    // UPDATE: Relaxed Logic for animations
     const code = locationData.weatherCode;
     const isCloudy = code > 2;
     const isRain = code >= 50 && code <= 99; 
-    // FIX: Show wind effects if speed > 2 (was 15) so user sees it more often
     const isWindy = locationData.windSpeed > 2; 
+    const isHazy = locationData.pm25 > 50; 
 
-    setAtmosphericState({ isDay, sunAltitudePct: altitudePercentage, isCloudy, isRain, isWindy });
+    setAtmosphericState({ isDay, sunAltitudePct: altitudePercentage, isCloudy, isRain, isWindy, isHazy });
 
     const root = document.documentElement;
     root.style.setProperty('--sun-pos-y', `${altitudePercentage}%`);
@@ -201,7 +201,7 @@ function App() {
     <div className={containerClasses}>
       <div className="celestial-orb"></div>
       
-      {/* 1. VISUAL EFFECTS LAYER */}
+      {/* Visual Effects */}
       <div className="wind-layer">
          {[...Array(6)].map((_, i) => (
              <div key={i} className="wind-stream" style={{
@@ -220,6 +220,9 @@ function App() {
         </div>
       )}
 
+      {/* Haze Overlay */}
+      <div className="haze-overlay" style={{opacity: atmosphericState.isHazy ? 0.6 : 0}}></div>
+
       {!atmosphericState.isDay && !atmosphericState.isCloudy && (
          <div className="star-layer">
             {[...Array(50)].map((_, i) => (
@@ -232,7 +235,6 @@ function App() {
          </div>
       )}
 
-      {/* FIXED: Removed 'isWindy' requirement for birds, they fly if it's day and not raining */}
       {atmosphericState.isDay && !atmosphericState.isRain && (
         <div className="bird-layer">
             {[...Array(3)].map((_, i) => (
@@ -241,7 +243,6 @@ function App() {
         </div>
       )}
       
-      {/* FIXED: Leaves only blow if there is some wind (>2kmh) */}
       {atmosphericState.isDay && atmosphericState.isWindy && (
         <div className="leaf-layer">
             {[...Array(10)].map((_, i) => (
@@ -326,7 +327,6 @@ function App() {
                     <h2>{locationData.name}</h2>
                     <div className="time-badge">{getTimeString(locationData.tz)}</div>
                     
-                    {/* FIXED: RESTORED FAHRENHEIT + FEELS LIKE */}
                     <div className="temp-display">
                         {locationData.tempC}°C 
                         <span style={{fontSize:'2.5rem', opacity:0.6, margin: '0 10px'}}>/</span>
@@ -390,6 +390,7 @@ function App() {
 
                     <div className="glass-card chart-container">
                         <h3 style={{marginBottom:'10px', textAlign:'center', fontSize:'1rem'}}><FiActivity/> 24-Hour Trends</h3>
+                        {/* CHART HEIGHT FIXED FOR VISIBILITY */}
                         <ResponsiveContainer width="100%" height={300}>
                             <AreaChart data={chartData}>
                                 <defs><linearGradient id="colorPm" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#8884d8" stopOpacity={0.8}/><stop offset="95%" stopColor="#8884d8" stopOpacity={0}/></linearGradient></defs>
@@ -426,6 +427,7 @@ function App() {
             </div>
 
             <div className="right-column">
+                {/* FIXED: WIND ANALYSIS - REVERTED TO BLUE */}
                 <div className="side-widget" style={{background: 'rgba(0,0,0,0.6)', border: '1px solid #4a90e2'}}>
                     <h3><FiWind/> Wind Analysis</h3>
                     <div style={{display:'flex', flexDirection:'column', alignItems:'center', gap:'15px', marginTop:'10px'}}>
@@ -437,6 +439,38 @@ function App() {
                             <div style={{opacity:0.7}}>km/h</div>
                         </div>
                         <div style={{fontSize:'0.9rem', textAlign:'center'}}>Coming from {locationData.windDir}°</div>
+                    </div>
+                </div>
+
+                {/* NEW: HEALTH IMPACT WIDGET - RED (VISIBLE ON MOBILE via CSS) */}
+                <div className="side-widget health-widget" style={{background: 'rgba(50, 0, 0, 0.5)', border: '1px solid #ef4444'}}>
+                    <h3><FiActivity/> Health Impact</h3>
+                    <div style={{fontSize:'0.9rem', marginBottom:'15px', opacity:0.9}}>
+                        Breathing this air is equivalent to smoking:
+                    </div>
+                    
+                    <div style={{display:'flex', alignItems:'center', justifyContent:'center', gap:'10px', marginBottom:'15px'}}>
+                        <span style={{fontSize:'2.5rem'}}>🚬</span>
+                        <div style={{textAlign:'left'}}>
+                            <span style={{fontSize:'2rem', fontWeight:'bold', color: '#fff'}}>
+                                {((locationData.pm25 * exposureTime) / 22).toFixed(1)}
+                            </span>
+                            <span style={{fontSize:'0.9rem', opacity:0.7, marginLeft:'5px'}}>cigarettes</span>
+                        </div>
+                    </div>
+
+                    <div style={{background:'rgba(255,255,255,0.1)', padding:'10px', borderRadius:'10px'}}>
+                        <label style={{fontSize:'0.8rem', display:'block', marginBottom:'5px'}}>
+                            Time spent outside: <strong>{exposureTime} hours</strong>
+                        </label>
+                        <input 
+                            type="range" min="1" max="24" value={exposureTime} 
+                            onChange={(e) => setExposureTime(e.target.value)}
+                            style={{width: '100%', cursor: 'pointer', accentColor: '#ef4444'}}
+                        />
+                    </div>
+                    <div style={{fontSize:'0.7rem', marginTop:'10px', opacity:0.6, fontStyle:'italic'}}>
+                        *Based on Berkeley Earth equivalence (22µg PM2.5 ≈ 1 cig)
                     </div>
                 </div>
 

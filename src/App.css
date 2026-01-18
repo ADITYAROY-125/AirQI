@@ -185,17 +185,22 @@ button:hover { transform: scale(1.05); }
 @keyframes leafBlow { 0% { left: -20px; top: 20%; transform: rotate(0deg); } 100% { left: 110%; top: 60%; transform: rotate(720deg); } }
 
 /* === MOBILE RESPONSIVENESS FIXES === */
+/* === MOBILE RESPONSIVENESS (MAX-WIDTH: 1000px) === */
+/* === MOBILE RESPONSIVENESS FIXES (Bottom of file) === */
 @media (max-width: 1000px) {
   /* 1. Reset Grid to Single Column */
   .main-layout { display: block; }
   .split-row { display: block; } 
   
-  /* 2. Hide sidebars to save space */
+  /* 2. Hide sidebars to save space... BUT show Health Widget */
   .side-widget { display: none; } 
+  /* Force display just for the Health Widget */
+  .health-widget { display: block !important; margin-top: 20px; width: 100%; }
+  .right-column { display: block; width: 100%; } 
   
   /* 3. Reduce Padding to prevent overflow */
   .content-layer { padding: 10px; width: 100%; }
-  .glass-card { padding: 15px; margin-bottom: 20px; }
+  .glass-card { padding: 15px; margin-bottom: 20px; width: 100%; }
 
   /* 4. Fix Search Bar Overflow */
   .search-wrapper { width: 100%; padding: 0; margin-bottom: 20px; }
@@ -220,4 +225,12 @@ button:hover { transform: scale(1.05); }
   .composition-grid { grid-template-columns: 1fr 1fr; gap: 10px; }
   .stat-box { padding: 10px 5px; min-height: 80px; }
   .stat-value { font-size: 1.2rem; }
+}
+
+/* Haze Overlay Styling */
+.haze-overlay {
+  position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+  background: linear-gradient(to bottom, rgba(160, 140, 50, 0.3), rgba(120, 100, 50, 0.6));
+  pointer-events: none; z-index: 3; transition: opacity 2s ease;
+  mix-blend-mode: multiply;
 }
