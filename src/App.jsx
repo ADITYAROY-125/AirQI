@@ -390,7 +390,7 @@ function App() {
 
                     <div className="glass-card chart-container">
                         <h3 style={{marginBottom:'10px', textAlign:'center', fontSize:'1rem'}}><FiActivity/> 24-Hour Trends</h3>
-                        <ResponsiveContainer width="100%" height="100%">
+                        <ResponsiveContainer width="100%" height={300}>
                             <AreaChart data={chartData}>
                                 <defs><linearGradient id="colorPm" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#8884d8" stopOpacity={0.8}/><stop offset="95%" stopColor="#8884d8" stopOpacity={0}/></linearGradient></defs>
                                 <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" />
