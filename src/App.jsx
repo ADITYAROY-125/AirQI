@@ -3,11 +3,15 @@ import { useState, useEffect } from 'react';
 import './App.css';
 import SunCalc from 'suncalc';
 import { format, toZonedTime } from 'date-fns-tz';
-import { FiSearch, FiWind, FiSun, FiActivity, FiNavigation, FiMapPin, FiInfo, FiGlobe, FiDatabase, FiTarget, FiCalendar, FiDroplet } from 'react-icons/fi';
+import { FiSearch, FiWind, FiActivity, FiNavigation, FiMapPin, FiInfo, FiDatabase, FiTarget, FiCalendar, FiDroplet } from 'react-icons/fi';
 import { LineChart, Line, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 import axios from 'axios';
 import { ComposableMap, Geographies, Geography, Marker } from "react-simple-maps";
 
+// Import the new Visualizer
+import ParticleBackground from './ParticleBackground';
+
+// Reliable Map Source
 const GEO_URL = "https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json";
 
 const RESEARCH_STATIONS = [
@@ -24,6 +28,35 @@ const AIR_FACTS = [
   "Nitrogen Dioxide (NO₂) peaks during rush hours."
 ];
 
+// --- SMART ADVICE LOGIC ---
+const getSmartAdvice = (pm25, weatherCode, temp) => {
+  const isRaining = weatherCode >= 50 && weatherCode <= 99; // Standard WMO codes for rain
+  const isHazardous = pm25 > 250;
+  const isUnhealthy = pm25 > 55;
+  const isHot = temp > 40;
+  const isCold = temp < 5;
+
+  // 1. Critical Pollution (Top Priority)
+  if (isHazardous) return "🚨 Hazardous Air! Stay indoors & close windows.";
+
+  // 2. Rain Logic (Overrides moderate pollution because getting wet is immediate)
+  if (isRaining) {
+      if (isUnhealthy) return "🌧️ Rainy & Smoggy. Umbrella + Mask required.";
+      return "☔ It's raining. Don't forget your umbrella!";
+  }
+
+  // 3. Pollution Logic
+  if (pm25 > 150) return "😷 Very Unhealthy. Avoid outdoor exercise.";
+  if (isUnhealthy) return "🌫️ Poor air quality. Wear a mask outside.";
+  
+  // 4. Extreme Temperature Logic
+  if (isHot) return "🔥 Extreme heat. Stay hydrated & avoid sun.";
+  if (isCold) return "❄️ Freezing cold. Wear warm layers.";
+
+  // 5. Default
+  return "🌿 Clean air. Enjoy the outdoors!";
+};
+
 function App() {
   const [searchText, setSearchText] = useState('');
   const [suggestions, setSuggestions] = useState([]);
@@ -31,9 +64,12 @@ function App() {
   const [chartData, setChartData] = useState([]);
   const [forecastData, setForecastData] = useState([]);
   const [atmosphericState, setAtmosphericState] = useState({ isDay: true, sunAltitudePct: 20, isCloudy: false, isRain: false, isWindy: false, isHazy: false });
-  const [mapView, setMapView] = useState({ center: [0, 20], zoom: 100 }); 
+  
+  // Map centered roughly on India by default
+  const [mapView, setMapView] = useState({ center: [80, 22], zoom: 400 }); 
+  
   const [currentFact, setCurrentFact] = useState(AIR_FACTS[0]);
-  const [exposureTime, setExposureTime] = useState(1); // Default 1 hour exposure
+  const [exposureTime, setExposureTime] = useState(1); 
 
   useEffect(() => { 
       fetchRealLocation("Delhi"); 
@@ -74,7 +110,8 @@ function App() {
             name = loc.name; country = loc.country;
         }
 
-        setMapView({ center: [lon, lat], zoom: 1500 });
+        // Optional: Update map center on search
+        // setMapView({ center: [lon, lat], zoom: 600 });
 
         const weatherUrl = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,apparent_temperature,weather_code,wind_speed_10m,wind_direction_10m,precipitation&daily=weather_code,temperature_2m_max,temperature_2m_min&timezone=auto`;
         const airUrl = `https://air-quality-api.open-meteo.com/v1/air-quality?latitude=${lat}&longitude=${lon}&current=pm10,pm2_5,nitrogen_dioxide,aerosol_optical_depth,sulphur_dioxide&hourly=pm10,pm2_5,nitrogen_dioxide,aerosol_optical_depth&timezone=auto`;
@@ -102,7 +139,12 @@ function App() {
         }));
         setForecastData(forecast);
 
-        const isPol = currentAir.pm2_5 > 50;
+        // Get Context-Aware Advice
+        const smartAdvice = getSmartAdvice(
+            currentAir.pm2_5, 
+            currentW.weather_code, 
+            currentW.temperature_2m
+        );
 
         setLocationData({
             name: `${name}, ${country}`, lat, lon, tz: w.timezone,
@@ -117,7 +159,7 @@ function App() {
             no2: currentAir.nitrogen_dioxide, so2: currentAir.sulphur_dioxide,
             aod: currentAir.aerosol_optical_depth || 0.15,
             aqi: Math.round(currentAir.pm2_5 * 2),
-            advice: isPol ? "Poor air quality. Mask recommended." : "Clean air. Enjoy outdoors!"
+            advice: smartAdvice
         });
         setChartData(hourlyData);
     } catch (error) { console.error("API Error:", error); }
@@ -201,6 +243,12 @@ function App() {
     <div className={containerClasses}>
       <div className="celestial-orb"></div>
       
+      {/* Dynamic Particle Background */}
+      <ParticleBackground 
+          pm25={locationData ? locationData.pm25 : 20} 
+          isDay={atmosphericState.isDay} 
+      />
+
       {/* Visual Effects */}
       <div className="wind-layer">
          {[...Array(6)].map((_, i) => (
@@ -220,7 +268,6 @@ function App() {
         </div>
       )}
 
-      {/* Haze Overlay */}
       <div className="haze-overlay" style={{opacity: atmosphericState.isHazy ? 0.6 : 0}}></div>
 
       {!atmosphericState.isDay && !atmosphericState.isCloudy && (
@@ -300,9 +347,21 @@ function App() {
                 
                 <div className="side-widget">
                     <h3><FiMapPin/> Location Map</h3>
+
+                    <div style={{fontSize: '0.85rem', opacity: 0.9, marginBottom: '10px', display: 'flex', justifyContent: 'space-between', background: 'rgba(255,255,255,0.1)', padding: '8px', borderRadius: '8px'}}>
+                        <span>Lat: <strong>{locationData.lat.toFixed(2)}°</strong></span>
+                        <span>Lon: <strong>{locationData.lon.toFixed(2)}°</strong></span>
+                    </div>
+
                     <div className="map-container">
-                        <ComposableMap projection="geoMercator" 
-                            projectionConfig={{ scale: mapView.zoom, center: mapView.center }}>
+                        <ComposableMap 
+                            projection="geoMercator" 
+                            projectionConfig={{ 
+                                scale: mapView.zoom,
+                                center: mapView.center
+                            }}
+                            width={400} height={250}
+                        >
                             <Geographies geography={GEO_URL}>
                                 {({ geographies }) => geographies.map(geo => (
                                     <Geography key={geo.rsmKey} geography={geo} 
@@ -312,8 +371,8 @@ function App() {
                                 ))}
                             </Geographies>
                             <Marker coordinates={[locationData.lon, locationData.lat]}>
-                                <circle r={10} fill="#FF5533" stroke="#fff" strokeWidth={3} />
-                                <text textAnchor="middle" y={-15} style={{ fontFamily: "system-ui", fill: "#5D5A6D", fontSize: "14px", fontWeight:"bold" }}>
+                                <circle r={8} fill="#FF5533" stroke="#fff" strokeWidth={2} />
+                                <text textAnchor="middle" y={-15} style={{ fontFamily: "system-ui", fill: "#333", fontSize: "12px", fontWeight:"bold", textShadow: "0px 0px 3px white" }}>
                                     {locationData.name.split(',')[0]}
                                 </text>
                             </Marker>
@@ -390,7 +449,6 @@ function App() {
 
                     <div className="glass-card chart-container">
                         <h3 style={{marginBottom:'10px', textAlign:'center', fontSize:'1rem'}}><FiActivity/> 24-Hour Trends</h3>
-                        {/* CHART HEIGHT FIXED FOR VISIBILITY */}
                         <ResponsiveContainer width="100%" height={300}>
                             <AreaChart data={chartData}>
                                 <defs><linearGradient id="colorPm" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#8884d8" stopOpacity={0.8}/><stop offset="95%" stopColor="#8884d8" stopOpacity={0}/></linearGradient></defs>
@@ -427,7 +485,6 @@ function App() {
             </div>
 
             <div className="right-column">
-                {/* FIXED: WIND ANALYSIS - REVERTED TO BLUE */}
                 <div className="side-widget" style={{background: 'rgba(0,0,0,0.6)', border: '1px solid #4a90e2'}}>
                     <h3><FiWind/> Wind Analysis</h3>
                     <div style={{display:'flex', flexDirection:'column', alignItems:'center', gap:'15px', marginTop:'10px'}}>
@@ -442,7 +499,6 @@ function App() {
                     </div>
                 </div>
 
-                {/* NEW: HEALTH IMPACT WIDGET - RED (VISIBLE ON MOBILE via CSS) */}
                 <div className="side-widget health-widget" style={{background: 'rgba(50, 0, 0, 0.5)', border: '1px solid #ef4444'}}>
                     <h3><FiActivity/> Health Impact</h3>
                     <div style={{fontSize:'0.9rem', marginBottom:'15px', opacity:0.9}}>

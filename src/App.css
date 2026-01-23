@@ -1,6 +1,6 @@
-/* src/App.css */
-
-/* 1. GLOBAL RESET - CRITICAL FIX */
+/* =========================================
+   1. GLOBAL RESET & VARS
+   ========================================= */
 * {
   box-sizing: border-box;
 }
@@ -19,29 +19,46 @@
 }
 
 body, html { 
-  margin: 0; padding: 0; min-height: 100%; 
+  margin: 0; padding: 0; 
+  min-height: 100%; 
   font-family: 'Segoe UI', sans-serif; 
   background-color: var(--sky-color-bottom);
-  overflow-x: hidden;
+  overflow-x: hidden; /* Prevents horizontal scroll on mobile */
 }
 
+/* Custom Scrollbar */
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-track { background: rgba(255, 255, 255, 0.1); }
+::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.4); border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(255, 255, 255, 0.6); }
+
 .app-container {
-  min-height: 100vh; width: 100%; position: relative;
+  min-height: 100vh; 
+  min-height: 100dvh; /* Mobile viewport fix */
+  width: 100%; position: relative;
   background: linear-gradient(to bottom, var(--sky-color-top), var(--sky-color-bottom));
   transition: background 1.5s ease; color: var(--text-primary);
   display: flex; flex-direction: column;
 }
 
-/* Celestial Elements */
+/* =========================================
+   2. CELESTIAL & ATMOSPHERIC ANIMATIONS
+   ========================================= */
 .celestial-orb {
   position: absolute; left: var(--sun-pos-x); top: var(--sun-pos-y);
   width: 120px; height: 120px; border-radius: 50%; background: var(--orb-color);
   box-shadow: 0 0 60px 20px var(--orb-glow); transform: translate(-50%, -50%);
   transition: top 1s ease, background 1.5s ease; z-index: 1;
+  will-change: transform, top; /* Performance Optimization */
 }
 
 .wind-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 2; overflow: hidden; opacity: 0.6; }
-.wind-stream { position: absolute; background: linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent); height: 2px; border-radius: 2px; animation: windFlow var(--wind-speed) linear infinite; }
+.wind-stream { 
+  position: absolute; background: linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent); 
+  height: 2px; border-radius: 2px; 
+  animation: windFlow var(--wind-speed) linear infinite; 
+  will-change: transform;
+}
 @keyframes windFlow { from { transform: translateX(-100%); } to { transform: translateX(200%); } }
 
 .cloud-overlay {
@@ -50,17 +67,48 @@ body, html {
   opacity: var(--cloud-opacity); z-index: 3; pointer-events: none; transition: opacity 1.5s ease;
 }
 
-/* LAYOUT CONTAINER */
-.content-layer {
-  position: relative; z-index: 10; 
-  padding: 20px; 
-  width: 100%; 
-  max-width: 1600px; 
-  margin: 0 auto; 
-  flex: 1;
+.haze-overlay {
+  position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+  background: linear-gradient(to bottom, rgba(160, 140, 50, 0.3), rgba(120, 100, 50, 0.6));
+  pointer-events: none; z-index: 3; transition: opacity 2s ease;
+  mix-blend-mode: multiply;
 }
 
-/* HEADER */
+/* Rain, Stars, Birds */
+.rain-layer { position: absolute; width: 100%; height: 100%; top: 0; left: 0; pointer-events: none; z-index: 2; }
+.rain-drop { 
+  position: absolute; background: rgba(255, 255, 255, 0.4); width: 2px; height: 15px; 
+  animation: rainFall 0.7s linear infinite; will-change: transform;
+}
+@keyframes rainFall { to { transform: translateY(100vh); } }
+
+.star-layer { position: absolute; width: 100%; height: 100%; top: 0; left: 0; pointer-events: none; z-index: 1; }
+.star { position: absolute; background: white; border-radius: 50%; animation: twinkle 3s infinite alternate; will-change: opacity; }
+@keyframes twinkle { from { opacity: 0.3; } to { opacity: 1; transform: scale(1.2); } }
+
+.bird-layer { position: absolute; width: 100%; height: 50%; top: 10%; pointer-events: none; z-index: 4; }
+.bird { 
+  position: absolute; width: 10px; height: 5px; border-bottom: 2px solid #333; border-right: 2px solid #333; 
+  transform: rotate(45deg); animation: birdFly 15s linear infinite; will-change: transform, left;
+}
+@keyframes birdFly { 0% { left: -50px; transform: rotate(45deg) translateY(0); } 100% { left: 110%; transform: rotate(45deg) translateY(-40px); } }
+
+.leaf-layer { position: absolute; width: 100%; height: 100%; top: 0; pointer-events: none; z-index: 4; }
+.leaf { 
+  position: absolute; width: 8px; height: 8px; border-radius: 0 50% 0 50%; 
+  animation: leafBlow 8s linear infinite; will-change: transform, left, top;
+}
+@keyframes leafBlow { 0% { left: -20px; top: 20%; transform: rotate(0deg); } 100% { left: 110%; top: 60%; transform: rotate(720deg); } }
+
+/* =========================================
+   3. LAYOUT & UI COMPONENTS
+   ========================================= */
+.content-layer {
+  position: relative; z-index: 10; 
+  padding: 20px; width: 100%; max-width: 1600px; margin: 0 auto; flex: 1;
+}
+
+/* Header */
 .header {
   display: flex; align-items: center; justify-content: center; 
   gap: 15px; margin-bottom: 30px; flex-wrap: wrap; text-align: center;
@@ -75,19 +123,11 @@ body, html {
   font-weight: 800; letter-spacing: 2px;
 }
 
-/* SEARCH BAR */
-.search-wrapper { 
-  position: relative; 
-  width: 100%; 
-  max-width: 500px; 
-  margin: 0 auto 40px auto; 
-  z-index: 50; 
-}
+/* Search Bar */
+.search-wrapper { position: relative; width: 100%; max-width: 500px; margin: 0 auto 40px auto; z-index: 50; }
 .search-container { display: flex; gap: 10px; width: 100%; }
 input {
-  padding: 15px 20px; 
-  width: 100%; 
-  border-radius: 30px; border: none;
+  padding: 15px 20px; width: 100%; border-radius: 30px; border: none;
   font-size: 1rem; box-shadow: 0 4px 15px rgba(0,0,0,0.2); color: #333; outline: none;
 }
 button {
@@ -105,23 +145,23 @@ button:hover { transform: scale(1.05); }
 .suggestion-item { padding: 12px 20px; color: #333; cursor: pointer; border-bottom: 1px solid #eee; }
 .suggestion-item:hover { background: #f0f9ff; color: #2563eb; }
 
-/* MAIN GRID */
+/* Main Grid Layout */
 .main-layout {
   display: grid; grid-template-columns: 280px 1fr 280px; gap: 30px; align-items: start;
 }
 
+/* Widgets */
 .side-widget {
   background: rgba(0, 0, 0, 0.5); backdrop-filter: blur(10px);
   border-radius: 20px; padding: 20px; color: white; margin-bottom: 20px;
   border: 1px solid rgba(255,255,255,0.1); box-shadow: 0 4px 15px rgba(0,0,0,0.2);
 }
-.side-widget h3 { margin-top: 0; border-bottom: 1px solid rgba(255,255,255,0.3); padding-bottom: 10px; font-size: 1.1rem; }
+.side-widget h3 { margin-top: 0; border-bottom: 1px solid rgba(255,255,255,0.3); padding-bottom: 10px; font-size: 1.1rem; display: flex; align-items: center; gap: 8px; }
+.hover-highlight:hover { background: rgba(255,255,255,0.1); border-radius: 5px; }
 
+/* Center Dashboard */
 .dashboard-grid { display: flex; flex-direction: column; gap: 20px; animation: fadeIn 0.8s ease-out; }
-
-.split-row {
-  display: grid; grid-template-columns: 1fr 2fr; gap: 20px; align-items: stretch;
-}
+.split-row { display: grid; grid-template-columns: 1fr 2fr; gap: 20px; align-items: stretch; }
 
 .glass-card {
   background: var(--card-bg); backdrop-filter: blur(16px);
@@ -131,8 +171,10 @@ button:hover { transform: scale(1.05); }
 }
 
 .location-header h2 { font-size: 3rem; margin: 0; word-wrap: break-word; line-height: 1.1; }
+.time-badge { display: inline-block; background: rgba(0,0,0,0.4); padding: 4px 12px; border-radius: 12px; font-size: 0.9rem; margin-top: 5px; }
 .temp-display { font-size: 3.5rem; font-weight: bold; margin: 10px 0; }
 
+/* Stats & Charts */
 .composition-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; height: 100%; }
 .stat-box { 
   background: rgba(0,0,0,0.3); padding: 15px 5px; border-radius: 15px; text-align: center; 
@@ -140,10 +182,10 @@ button:hover { transform: scale(1.05); }
 }
 .stat-value { font-size: 1.5rem; font-weight: bold; margin: 5px 0; }
 .stat-unit { font-size: 0.75rem; opacity: 0.8; font-weight: normal; }
-
 .chart-container { min-height: 400px; background: rgba(0, 0, 0, 0.6); border-radius: 20px; padding: 20px; }
-.map-container { height: 250px; width: 100%; border-radius: 15px; overflow: hidden; background: rgba(0,0,0,0.2); margin-top: 20px; }
 
+/* Maps & Forecast */
+.map-container { height: 250px; width: 100%; border-radius: 15px; overflow: hidden; background: rgba(0,0,0,0.2); margin-top: 20px; }
 .forecast-row { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; margin-top: 10px; }
 .forecast-card { background: rgba(0,0,0,0.2); border-radius: 10px; padding: 10px; text-align: center; border: 1px solid rgba(255,255,255,0.1); }
 .forecast-day { font-size: 0.9rem; opacity: 0.8; margin-bottom: 5px; }
@@ -151,14 +193,16 @@ button:hover { transform: scale(1.05); }
 .forecast-temp { font-weight: bold; font-size: 1.1rem; }
 .forecast-low { font-size: 0.8rem; opacity: 0.6; }
 
-.sources-section { grid-column: 1 / -1; margin-top: 40px; overflow-x: auto; }
+/* Sources Table */
+.sources-section { grid-column: 1 / -1; margin-top: 20px; overflow-x: auto; }
 .sources-table { width: 100%; border-collapse: collapse; margin-top: 15px; font-size: 0.9rem; min-width: 500px; }
 .sources-table th { text-align: left; padding: 10px; border-bottom: 1px solid rgba(255,255,255,0.3); opacity: 0.8; }
 .sources-table td { padding: 12px 10px; border-bottom: 1px solid rgba(255,255,255,0.1); }
 .source-tag { background: rgba(255,255,255,0.15); padding: 4px 8px; border-radius: 5px; font-size: 0.8rem; margin-right: 5px; }
 
-.footer { text-align: center; padding: 20px; margin-top: 40px; background: rgba(0,0,0,0.4); }
+.footer { text-align: center; padding: 20px; margin-top: 40px; background: rgba(0,0,0,0.4); font-size: 0.8rem; opacity: 0.7; }
 
+/* Night Mode Overrides */
 .is-night { --text-primary: #e2e8f0; --card-bg: rgba(10, 20, 40, 0.7); }
 .is-night input { background: #f0f0f0 !important; color: #222 !important; border: 2px solid #555; }
 .is-night .suggestions-list { background: #2d3748; border: 1px solid #4a5568; }
@@ -167,70 +211,42 @@ button:hover { transform: scale(1.05); }
 
 @keyframes fadeIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
 
-/* ANIMATIONS */
-.rain-layer { position: absolute; width: 100%; height: 100%; top: 0; left: 0; pointer-events: none; z-index: 2; }
-.rain-drop { position: absolute; background: rgba(255, 255, 255, 0.4); width: 2px; height: 15px; animation: rainFall 0.7s linear infinite; }
-@keyframes rainFall { to { transform: translateY(100vh); } }
-
-.star-layer { position: absolute; width: 100%; height: 100%; top: 0; left: 0; pointer-events: none; z-index: 1; }
-.star { position: absolute; background: white; border-radius: 50%; animation: twinkle 3s infinite alternate; }
-@keyframes twinkle { from { opacity: 0.3; } to { opacity: 1; transform: scale(1.2); } }
-
-.bird-layer { position: absolute; width: 100%; height: 50%; top: 10%; pointer-events: none; z-index: 4; }
-.bird { position: absolute; width: 10px; height: 5px; border-bottom: 2px solid #333; border-right: 2px solid #333; transform: rotate(45deg); animation: birdFly 15s linear infinite; }
-@keyframes birdFly { 0% { left: -50px; transform: rotate(45deg) translateY(0); } 100% { left: 110%; transform: rotate(45deg) translateY(-40px); } }
-
-.leaf-layer { position: absolute; width: 100%; height: 100%; top: 0; pointer-events: none; z-index: 4; }
-.leaf { position: absolute; width: 8px; height: 8px; background: #90be6d; border-radius: 0 50% 0 50%; animation: leafBlow 8s linear infinite; }
-@keyframes leafBlow { 0% { left: -20px; top: 20%; transform: rotate(0deg); } 100% { left: 110%; top: 60%; transform: rotate(720deg); } }
-
-/* === MOBILE RESPONSIVENESS FIXES === */
-/* === MOBILE RESPONSIVENESS (MAX-WIDTH: 1000px) === */
-/* === MOBILE RESPONSIVENESS FIXES (Bottom of file) === */
+/* =========================================
+   4. RESPONSIVE DESIGN (MOBILE FIXES)
+   ========================================= */
 @media (max-width: 1000px) {
-  /* 1. Reset Grid to Single Column */
+  /* 1. Collapse Grid to Single Column */
   .main-layout { display: block; }
   .split-row { display: block; } 
   
-  /* 2. Hide sidebars to save space... BUT show Health Widget */
+  /* 2. Hide general side widgets to save space */
   .side-widget { display: none; } 
-  /* Force display just for the Health Widget */
-  .health-widget { display: block !important; margin-top: 20px; width: 100%; }
-  .right-column { display: block; width: 100%; } 
   
-  /* 3. Reduce Padding to prevent overflow */
+  /* 3. EXCEPTION: Force Health Widget to Show */
+  .health-widget { display: block !important; margin-top: 20px; width: 100%; }
+  
+  /* 4. Layout Spacing */
   .content-layer { padding: 10px; width: 100%; }
   .glass-card { padding: 15px; margin-bottom: 20px; width: 100%; }
 
-  /* 4. Fix Search Bar Overflow */
+  /* 5. Header & Search Fixes */
+  .header { flex-direction: column; gap: 5px; margin-bottom: 20px; }
+  .site-logo { height: 70px; }
+  .header h1 { font-size: 2.5rem; }
   .search-wrapper { width: 100%; padding: 0; margin-bottom: 20px; }
   .search-container { width: 100%; gap: 5px; }
   input { width: 100%; font-size: 1rem; padding: 12px 15px; }
   button { padding: 12px 15px; } 
 
-  /* 5. Header Adjustments */
-  .header { flex-direction: column; gap: 5px; margin-bottom: 20px; }
-  .site-logo { height: 70px; }
-  .header h1 { font-size: 2.5rem; }
-
-  /* 6. Typography adjustments */
+  /* 6. Typography */
   .location-header h2 { font-size: 2rem; }
   .temp-display { font-size: 2.8rem; }
   
-  /* 7. Allow forecast to scroll if needed */
+  /* 7. Forecast Scroll */
   .forecast-row { display: flex; overflow-x: auto; padding-bottom: 10px; gap: 10px; }
   .forecast-card { min-width: 70px; flex: 1; }
   
-  /* 8. Fix Stats Grid */
+  /* 8. Stats Grid */
   .composition-grid { grid-template-columns: 1fr 1fr; gap: 10px; }
   .stat-box { padding: 10px 5px; min-height: 80px; }
-  .stat-value { font-size: 1.2rem; }
-}
-
-/* Haze Overlay Styling */
-.haze-overlay {
-  position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-  background: linear-gradient(to bottom, rgba(160, 140, 50, 0.3), rgba(120, 100, 50, 0.6));
-  pointer-events: none; z-index: 3; transition: opacity 2s ease;
-  mix-blend-mode: multiply;
 }
