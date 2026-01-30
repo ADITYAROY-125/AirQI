@@ -111,7 +111,7 @@ function App() {
         }
 
         // Optional: Update map center on search
-        // setMapView({ center: [lon, lat], zoom: 600 });
+        setMapView({ center: [lon, lat], zoom: 600 });
 
         const weatherUrl = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,apparent_temperature,weather_code,wind_speed_10m,wind_direction_10m,precipitation&daily=weather_code,temperature_2m_max,temperature_2m_min&timezone=auto`;
         const airUrl = `https://air-quality-api.open-meteo.com/v1/air-quality?latitude=${lat}&longitude=${lon}&current=pm10,pm2_5,nitrogen_dioxide,aerosol_optical_depth,sulphur_dioxide&hourly=pm10,pm2_5,nitrogen_dioxide,aerosol_optical_depth&timezone=auto`;
