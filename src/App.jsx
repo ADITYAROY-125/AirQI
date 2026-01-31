@@ -389,6 +389,16 @@ function App() {
                         </ComposableMap>
                     </div>
                 </div>
+                <div className="side-widget">
+                    <h3><FiInfo/> Air Facts</h3>
+                    <div style={{fontSize:'0.9rem', lineHeight:'1.5'}}>
+                        Did You Know? {currentFact}
+                        <br/><br/>
+                        <div style={{display: 'flex', alignItems: 'center', gap: '8px', color: '#87CEEB'}}>
+                             <FiDroplet/> Rain today: {locationData.precip} mm
+                        </div>
+                    </div>
+                </div>
             </div>
 
             <div className="dashboard-grid">
@@ -611,16 +621,7 @@ function App() {
                     </div>
                 </div>
 
-                <div className="side-widget">
-                    <h3><FiInfo/> Air Facts</h3>
-                    <div style={{fontSize:'0.9rem', lineHeight:'1.5'}}>
-                        Did You Know? {currentFact}
-                        <br/><br/>
-                        <div style={{display: 'flex', alignItems: 'center', gap: '8px', color: '#87CEEB'}}>
-                             <FiDroplet/> Rain today: {locationData.precip} mm
-                        </div>
-                    </div>
-                </div>
+                
             </div>
 
           </div>
