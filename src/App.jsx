@@ -8,9 +8,6 @@ import { LineChart, Line, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip,
 import axios from 'axios';
 import { ComposableMap, Geographies, Geography, Marker } from "react-simple-maps";
 
-// Import the new Visualizer
-import ParticleBackground from './ParticleBackground';
-
 // Reliable Map Source
 const GEO_URL = "https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json";
 
@@ -30,30 +27,21 @@ const AIR_FACTS = [
 
 // --- SMART ADVICE LOGIC ---
 const getSmartAdvice = (pm25, weatherCode, temp) => {
-  const isRaining = weatherCode >= 50 && weatherCode <= 99; // Standard WMO codes for rain
+  const isRaining = weatherCode >= 50 && weatherCode <= 99; 
   const isHazardous = pm25 > 250;
   const isUnhealthy = pm25 > 55;
   const isHot = temp > 40;
   const isCold = temp < 5;
 
-  // 1. Critical Pollution (Top Priority)
   if (isHazardous) return "🚨 Hazardous Air! Stay indoors & close windows.";
-
-  // 2. Rain Logic (Overrides moderate pollution because getting wet is immediate)
   if (isRaining) {
       if (isUnhealthy) return "🌧️ Rainy & Smoggy. Umbrella + Mask required.";
       return "☔ It's raining. Don't forget your umbrella!";
   }
-
-  // 3. Pollution Logic
   if (pm25 > 150) return "😷 Very Unhealthy. Avoid outdoor exercise.";
   if (isUnhealthy) return "🌫️ Poor air quality. Wear a mask outside.";
-  
-  // 4. Extreme Temperature Logic
   if (isHot) return "🔥 Extreme heat. Stay hydrated & avoid sun.";
   if (isCold) return "❄️ Freezing cold. Wear warm layers.";
-
-  // 5. Default
   return "🌿 Clean air. Enjoy the outdoors!";
 };
 
@@ -63,11 +51,11 @@ function App() {
   const [locationData, setLocationData] = useState(null);
   const [chartData, setChartData] = useState([]);
   const [forecastData, setForecastData] = useState([]);
+  // NEW: State for historical comparison
+  const [historicalData, setHistoricalData] = useState(null);
+  
   const [atmosphericState, setAtmosphericState] = useState({ isDay: true, sunAltitudePct: 20, isCloudy: false, isRain: false, isWindy: false, isHazy: false });
-  
-  // Map centered roughly on India by default
   const [mapView, setMapView] = useState({ center: [80, 22], zoom: 400 }); 
-  
   const [currentFact, setCurrentFact] = useState(AIR_FACTS[0]);
   const [exposureTime, setExposureTime] = useState(1); 
 
@@ -93,6 +81,32 @@ function App() {
     fetchRealLocation(null, cityObj);
   };
 
+  // --- NEW: HISTORICAL WEATHER FETCHER ---
+  const fetchHistoricalData = async (lat, lon) => {
+    try {
+        // 1. Calculate date 20 years ago
+        const date = new Date();
+        const currentHour = date.getHours();
+        date.setFullYear(date.getFullYear() - 20); // Go back 20 years
+        const pastDateString = date.toISOString().split('T')[0];
+
+        // 2. Fetch Historical Data from Open-Meteo Archive
+        const url = `https://archive-api.open-meteo.com/v1/archive?latitude=${lat}&longitude=${lon}&start_date=${pastDateString}&end_date=${pastDateString}&hourly=temperature_2m&timezone=auto`;
+        
+        const res = await axios.get(url);
+        // The API returns an array of 24 hours. We pick the current hour index.
+        const pastTemp = res.data.hourly.temperature_2m[currentHour];
+        
+        setHistoricalData({
+            year: date.getFullYear(),
+            temp: pastTemp
+        });
+    } catch (error) {
+        console.error("History API Error:", error);
+        setHistoricalData(null);
+    }
+  };
+
   const fetchRealLocation = async (queryName, directObj = null) => {
     try {
         let lat, lon, name, country;
@@ -110,8 +124,8 @@ function App() {
             name = loc.name; country = loc.country;
         }
 
-        // Optional: Update map center on search
-        setMapView({ center: [lon, lat], zoom: 600 });
+        // --- FIXED: Map updates correctly now ---
+        setMapView({ center: [lon, lat], zoom: 800 }); 
 
         const weatherUrl = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,apparent_temperature,weather_code,wind_speed_10m,wind_direction_10m,precipitation&daily=weather_code,temperature_2m_max,temperature_2m_min&timezone=auto`;
         const airUrl = `https://air-quality-api.open-meteo.com/v1/air-quality?latitude=${lat}&longitude=${lon}&current=pm10,pm2_5,nitrogen_dioxide,aerosol_optical_depth,sulphur_dioxide&hourly=pm10,pm2_5,nitrogen_dioxide,aerosol_optical_depth&timezone=auto`;
@@ -121,6 +135,9 @@ function App() {
         const a = airRes.data;
         const currentW = w.current;
         const currentAir = a.current;
+
+        // Fetch Historical Comparison
+        fetchHistoricalData(lat, lon);
 
         const hourlyData = a.hourly.time.slice(0, 24).map((t, i) => ({
             time: t.split('T')[1],
@@ -139,7 +156,6 @@ function App() {
         }));
         setForecastData(forecast);
 
-        // Get Context-Aware Advice
         const smartAdvice = getSmartAdvice(
             currentAir.pm2_5, 
             currentW.weather_code, 
@@ -243,12 +259,6 @@ function App() {
     <div className={containerClasses}>
       <div className="celestial-orb"></div>
       
-      {/* Dynamic Particle Background */}
-      <ParticleBackground 
-          pm25={locationData ? locationData.pm25 : 20} 
-          isDay={atmosphericState.isDay} 
-      />
-
       {/* Visual Effects */}
       <div className="wind-layer">
          {[...Array(6)].map((_, i) => (
@@ -485,6 +495,77 @@ function App() {
             </div>
 
             <div className="right-column">
+                
+                {/* --- NEW: CLIMATE TIME MACHINE WIDGET --- */}
+                {locationData && historicalData && (
+                    <div className="side-widget" style={{background: 'linear-gradient(135deg, #1e3c72 0%, #2a5298 100%)', border: '1px solid rgba(255,255,255,0.2)'}}>
+                        <h3><FiCalendar/> Climate Time Machine</h3>
+                        <div style={{fontSize: '0.9rem', marginBottom: '15px', opacity: 0.9}}>
+                            Comparing <strong>Today</strong> vs. <strong>{historicalData.year}</strong> (Same Time)
+                        </div>
+
+                        <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px'}}>
+                            {/* PAST */}
+                            <div style={{textAlign: 'center'}}>
+                                <div style={{fontSize: '0.8rem', opacity: 0.7}}>{historicalData.year}</div>
+                                <div style={{fontSize: '1.5rem', fontWeight: 'bold', color: '#aabbc3'}}>
+                                    {Math.round(historicalData.temp)}°C
+                                </div>
+                            </div>
+
+                            {/* ARROW & DIFF */}
+                            <div style={{textAlign: 'center', flex: 1}}>
+                                {locationData.tempC > historicalData.temp ? (
+                                    <span style={{color: '#ef4444', fontWeight: 'bold', fontSize: '1.2rem'}}>
+                                        ↗ +{(locationData.tempC - historicalData.temp).toFixed(1)}°
+                                    </span>
+                                ) : (
+                                    <span style={{color: '#10b981', fontWeight: 'bold', fontSize: '1.2rem'}}>
+                                        ↘ {(locationData.tempC - historicalData.temp).toFixed(1)}°
+                                    </span>
+                                )}
+                                <div style={{fontSize: '0.7rem', marginTop: '5px'}}>CHANGE</div>
+                            </div>
+
+                            {/* PRESENT */}
+                            <div style={{textAlign: 'center'}}>
+                                <div style={{fontSize: '0.8rem', opacity: 0.7}}>NOW</div>
+                                <div style={{fontSize: '1.5rem', fontWeight: 'bold', color: '#fff'}}>
+                                    {locationData.tempC}°C
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* VISUAL BAR */}
+                        <div style={{width: '100%', height: '8px', background: 'rgba(255,255,255,0.1)', borderRadius: '4px', marginTop: '10px', position: 'relative'}}>
+                            <div style={{
+                                position: 'absolute',
+                                left: '50%',
+                                top: 0,
+                                bottom: 0,
+                                width: '2px',
+                                background: '#fff',
+                                opacity: 0.5
+                            }}></div>
+                            <div style={{
+                                position: 'absolute',
+                                left: locationData.tempC >= historicalData.temp ? '50%' : `calc(50% - ${Math.min(Math.abs(locationData.tempC - historicalData.temp) * 5, 45)}%)`,
+                                width: `${Math.min(Math.abs(locationData.tempC - historicalData.temp) * 5, 45)}%`,
+                                height: '100%',
+                                background: locationData.tempC > historicalData.temp ? '#ef4444' : '#10b981',
+                                borderRadius: '4px',
+                                transition: 'all 1s ease'
+                            }}></div>
+                        </div>
+                        
+                        <div style={{fontSize: '0.75rem', marginTop: '10px', textAlign: 'center', fontStyle: 'italic', opacity: 0.8}}>
+                            {locationData.tempC > historicalData.temp 
+                                ? "It is warmer today than it was 20 years ago." 
+                                : "It is cooler today than it was 20 years ago."}
+                        </div>
+                    </div>
+                )}
+
                 <div className="side-widget" style={{background: 'rgba(0,0,0,0.6)', border: '1px solid #4a90e2'}}>
                     <h3><FiWind/> Wind Analysis</h3>
                     <div style={{display:'flex', flexDirection:'column', alignItems:'center', gap:'15px', marginTop:'10px'}}>
