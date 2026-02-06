@@ -25,6 +25,7 @@ const AIR_FACTS = [
   "Nitrogen Dioxide (NO₂) peaks during rush hours."
 ];
 
+
 // --- SMART ADVICE LOGIC ---
 const getSmartAdvice = (pm25, weatherCode, temp) => {
   const isRaining = weatherCode >= 50 && weatherCode <= 99; 
@@ -52,6 +53,7 @@ function App() {
   const [chartData, setChartData] = useState([]);
   const [forecastData, setForecastData] = useState([]);
   // NEW: State for historical comparison
+  const [acHours, setAcHours] = useState(4); // Default 4 hours of AC usage
   const [historicalData, setHistoricalData] = useState(null);
   
   const [atmosphericState, setAtmosphericState] = useState({ isDay: true, sunAltitudePct: 20, isCloudy: false, isRain: false, isWindy: false, isHazy: false });
@@ -620,7 +622,51 @@ function App() {
                         *Based on Berkeley Earth equivalence (22µg PM2.5 ≈ 1 cig)
                     </div>
                 </div>
+                                        <div className="side-widget ac-widget" style={{background: 'linear-gradient(135deg, #2c3e50 0%, #000000 100%)', border: '1px solid rgba(255,255,255,0.2)'}}>
+    <h3><FiWind/> AC vs. Trees</h3>
+    
+    <div style={{fontSize: '0.9rem', marginBottom: '15px', opacity: 0.9}}>
+        If you run a <strong>1.5 Ton AC</strong> for:
+    </div>
 
+    {/* INPUT SLIDER */}
+    <div style={{background:'rgba(255,255,255,0.1)', padding:'10px', borderRadius:'10px', marginBottom: '15px'}}>
+        <div style={{display:'flex', justifyContent:'space-between', marginBottom:'5px'}}>
+            <span style={{fontWeight:'bold'}}>{acHours} Hours / Day</span>
+            <span style={{fontSize:'0.8rem', opacity:0.7}}>Daily Usage</span>
+        </div>
+        <input 
+            type="range" min="1" max="24" value={acHours} 
+            onChange={(e) => setAcHours(e.target.value)}
+            style={{width: '100%', cursor: 'pointer', accentColor: '#10b981'}}
+        />
+    </div>
+
+    {/* CALCULATIONS */}
+    <div style={{display: 'flex', gap: '10px', marginBottom: '15px'}}>
+        {/* CO2 EMISSION */}
+        <div style={{flex: 1, background: 'rgba(239, 68, 68, 0.2)', padding: '10px', borderRadius: '8px', textAlign: 'center', border: '1px solid rgba(239, 68, 68, 0.5)'}}>
+            <div style={{fontSize: '1.2rem', fontWeight: 'bold', color: '#fca5a5'}}>
+                {(acHours * 1.5 * 0.85 * 30).toFixed(0)} kg
+            </div>
+            <div style={{fontSize: '0.7rem', opacity: 0.8}}>CO₂ per Month</div>
+        </div>
+
+        {/* TREES NEEDED */}
+        <div style={{flex: 1, background: 'rgba(16, 185, 129, 0.2)', padding: '10px', borderRadius: '8px', textAlign: 'center', border: '1px solid rgba(16, 185, 129, 0.5)'}}>
+            <div style={{fontSize: '1.2rem', fontWeight: 'bold', color: '#6ee7b7'}}>
+                {Math.ceil((acHours * 1.5 * 0.85 * 365) / 25)} 🌳
+            </div>
+            <div style={{fontSize: '0.7rem', opacity: 0.8}}>Trees to Offset (Yr)</div>
+        </div>
+    </div>
+
+    {/* RECOMMENDATION */}
+    <div style={{fontSize: '0.8rem', lineHeight: '1.4', background: 'rgba(255,255,255,0.05)', padding: '10px', borderRadius: '8px'}}>
+        <strong>Recommendation:</strong> To fix this, you need <strong>Outdoor Trees</strong> (Peepal, Neem, Banyan). <br/>
+        <span style={{opacity:0.7, fontSize:'0.75rem', display:'block', marginTop:'5px'}}>*Indoor plants (Snake Plant) clean air but cannot capture this much carbon.</span>
+    </div>
+</div>
                 
             </div>
 

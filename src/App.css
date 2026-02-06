@@ -250,3 +250,10 @@ button:hover { transform: scale(1.05); }
   .composition-grid { grid-template-columns: 1fr 1fr; gap: 10px; }
   .stat-box { padding: 10px 5px; min-height: 80px; }
 }
+.health-widget { display: block !important; margin-top: 20px; width: 100%; }
+/* Force display for BOTH Health and AC Widgets */
+.health-widget, .ac-widget { 
+  display: block !important; 
+  margin-top: 20px; 
+  width: 100%; 
+}
