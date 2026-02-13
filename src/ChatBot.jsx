@@ -1,15 +1,15 @@
 // src/ChatBot.jsx
 import { useState, useRef, useEffect } from 'react';
 import { FiX, FiSend } from 'react-icons/fi';
-import { RiLeafLine, RiRobot2Line } from 'react-icons/ri'; // ✅ New Leaf Icons
+import { RiLeafLine } from 'react-icons/ri'; 
 import axios from 'axios';
 
 const ChatBot = () => {
   const [isOpen, setIsOpen] = useState(false);
-  const [showWelcome, setShowWelcome] = useState(true); // Control the "Hiii" popup
+  const [showWelcome, setShowWelcome] = useState(true);
   
   const [messages, setMessages] = useState([
-    { role: 'model', text: "Hello! I am Leaf Bot 🌿. Ask me about air quality, nature, or how to save the planet!" }
+    { role: 'model', text: "Hello! I am Leaf Bot 🌿. Ask me about air quality or who created me!" }
   ]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -18,10 +18,19 @@ const ChatBot = () => {
   const scrollToBottom = () => messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   useEffect(scrollToBottom, [messages]);
 
-  // Hide the "Hiii" bubble when chat opens
   useEffect(() => {
     if (isOpen) setShowWelcome(false);
   }, [isOpen]);
+
+  // ✅ HELPER FUNCTION: Turns **text** into Bold Text
+  const renderText = (text) => {
+    return text.split(/(\*\*.*?\*\*)/g).map((part, index) => {
+      if (part.startsWith('**') && part.endsWith('**')) {
+        return <strong key={index}>{part.slice(2, -2)}</strong>;
+      }
+      return part;
+    });
+  };
 
   const handleSend = async () => {
     if (!input.trim()) return;
@@ -32,20 +41,26 @@ const ChatBot = () => {
     setIsLoading(true);
 
     try {
-      // 1. Build context
+      // ✅ UPDATED SYSTEM INSTRUCTIONS: Added Founder Info
       const promptContext = `
       SYSTEM INSTRUCTIONS:
       You are "Leaf Bot", a friendly AI assistant for the AirQI Dashboard.
-      - Identity: You care deeply about nature, air quality, and human health.
-      - Tone: Friendly, organic, and helpful. Use a plant emoji 🌿 occasionally.
-      - Context: User is asking about: ${userText}
+      
+      YOUR IDENTITY:
+      - Name: Leaf Bot 🌿
+      - Creator: You were created by "Aditya Roy and his AirQI Team". (Always mention this if asked who made you or who is your founder).
+      - Purpose: To help users understand air quality, weather, and nature.
+      - Tone: Friendly, organic, and helpful. 
+      
+      FORMATTING RULES:
+      - Keep answers short and easy to read.
+      - Use **bold** for important words.
       
       CONVERSATION HISTORY:
       ${messages.map(m => `${m.role === 'user' ? 'User' : 'AI'}: ${m.text}`).join('\n')}
       User: ${userText}
       AI:`;
 
-      // 2. Send to Backend
       const response = await axios.post('/.netlify/functions/chat', { 
         prompt: promptContext 
       });
@@ -67,7 +82,7 @@ const ChatBot = () => {
 
   return (
     <>
-      {/* --- THE POP-UP BUBBLE --- */}
+      {/* POP-UP BUBBLE */}
       {!isOpen && showWelcome && (
         <div style={{
             position: 'fixed', bottom: '90px', right: '30px',
@@ -84,13 +99,13 @@ const ChatBot = () => {
         </div>
       )}
 
-      {/* --- THE FLOATING LEAF BUTTON --- */}
+      {/* FLOATING BUTTON */}
       <button 
         onClick={() => setIsOpen(!isOpen)}
         style={{
             position: 'fixed', bottom: '20px', right: '20px', 
             width: '65px', height: '65px', borderRadius: '50%', 
-            background: 'linear-gradient(135deg, #43e97b, #38f9d7)', // ✅ Nature Green Gradient
+            background: 'linear-gradient(135deg, #43e97b, #38f9d7)',
             color: 'white', border: 'none', 
             boxShadow: '0 4px 15px rgba(0,0,0,0.3)', 
             cursor: 'pointer', zIndex: 9999, 
@@ -101,19 +116,18 @@ const ChatBot = () => {
         onMouseOut={(e) => e.currentTarget.style.transform = 'scale(1)'}
       >
         {isOpen ? <FiX size={30} color="#145a32"/> : (
-            // ✅ THE ANIMATED LEAF ICON
             <div style={{animation: 'sway 3s ease-in-out infinite'}}>
                 <RiLeafLine size={32} color="#145a32" />
             </div>
         )}
       </button>
 
-      {/* --- THE CHAT WINDOW --- */}
+      {/* CHAT WINDOW */}
       {isOpen && (
         <div style={{
             position: 'fixed', bottom: '100px', right: '20px',
             width: '350px', height: '500px', 
-            background: 'rgba(255, 255, 255, 0.95)', // Lighter, cleaner background
+            background: 'rgba(255, 255, 255, 0.95)',
             backdropFilter: 'blur(12px)', borderRadius: '20px',
             border: '1px solid rgba(0,0,0,0.1)', 
             display: 'flex', flexDirection: 'column',
@@ -122,7 +136,7 @@ const ChatBot = () => {
         }}>
             {/* Header */}
             <div style={{
-                padding: '15px', background: 'linear-gradient(90deg, #43e97b, #38f9d7)', // Green Header
+                padding: '15px', background: 'linear-gradient(90deg, #43e97b, #38f9d7)',
                 borderBottom: '1px solid rgba(0,0,0,0.05)', 
                 display: 'flex', alignItems: 'center', gap: '10px', color: '#145a32'
             }}>
@@ -145,14 +159,15 @@ const ChatBot = () => {
                         maxWidth: '85%', display: 'flex', flexDirection: 'column'
                     }}>
                          <div style={{
-                            background: msg.role === 'user' ? '#2e7d32' : 'white', // Dark Green for User
+                            background: msg.role === 'user' ? '#2e7d32' : 'white',
                             color: msg.role === 'user' ? 'white' : '#333',
                             padding: '12px 16px', 
                             borderRadius: msg.role === 'user' ? '15px 15px 0 15px' : '15px 15px 15px 0',
                             fontSize: '0.9rem', lineHeight: '1.5',
                             boxShadow: '0 2px 5px rgba(0,0,0,0.05)', border: msg.role === 'user' ? 'none' : '1px solid #eee'
                         }}>
-                            {msg.text}
+                            {/* ✅ CALLING THE HELPER FUNCTION HERE */}
+                            {renderText(msg.text)}
                         </div>
                     </div>
                 ))}
@@ -191,7 +206,6 @@ const ChatBot = () => {
                 </button>
             </div>
             
-            {/* --- CSS ANIMATIONS --- */}
             <style>{`
                 @keyframes sway {
                     0% { transform: rotate(0deg); }
