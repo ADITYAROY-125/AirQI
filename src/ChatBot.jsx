@@ -9,7 +9,7 @@ const ChatBot = () => {
   const [showWelcome, setShowWelcome] = useState(true);
   
   const [messages, setMessages] = useState([
-    { role: 'model', text: "Hello! I am Leaf Bot 🌿. Ask me about air quality or who created me!" }
+    { role: 'model', text: "Hello! I am Leaf Bot 🌿. Ask me about air quality or anything" }
   ]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
