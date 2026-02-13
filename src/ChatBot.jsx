@@ -1,12 +1,15 @@
 // src/ChatBot.jsx
 import { useState, useRef, useEffect } from 'react';
-import { FiMessageSquare, FiX, FiSend, FiCpu } from 'react-icons/fi';
+import { FiX, FiSend } from 'react-icons/fi';
+import { RiLeafLine, RiRobot2Line } from 'react-icons/ri'; // ✅ New Leaf Icons
 import axios from 'axios';
 
 const ChatBot = () => {
   const [isOpen, setIsOpen] = useState(false);
+  const [showWelcome, setShowWelcome] = useState(true); // Control the "Hiii" popup
+  
   const [messages, setMessages] = useState([
-    { role: 'model', text: "Hello! I am AirQI Bot. System Ready." }
+    { role: 'model', text: "Hello! I am Leaf Bot 🌿. Ask me about air quality, nature, or how to save the planet!" }
   ]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -14,6 +17,11 @@ const ChatBot = () => {
 
   const scrollToBottom = () => messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   useEffect(scrollToBottom, [messages]);
+
+  // Hide the "Hiii" bubble when chat opens
+  useEffect(() => {
+    if (isOpen) setShowWelcome(false);
+  }, [isOpen]);
 
   const handleSend = async () => {
     if (!input.trim()) return;
@@ -24,45 +32,34 @@ const ChatBot = () => {
     setIsLoading(true);
 
     try {
+      // 1. Build context
       const promptContext = `
-      You are AirQI Bot. Keep answers short.
+      SYSTEM INSTRUCTIONS:
+      You are "Leaf Bot", a friendly AI assistant for the AirQI Dashboard.
+      - Identity: You care deeply about nature, air quality, and human health.
+      - Tone: Friendly, organic, and helpful. Use a plant emoji 🌿 occasionally.
+      - Context: User is asking about: ${userText}
+      
+      CONVERSATION HISTORY:
+      ${messages.map(m => `${m.role === 'user' ? 'User' : 'AI'}: ${m.text}`).join('\n')}
       User: ${userText}
       AI:`;
 
-      console.log("Sending request to /.netlify/functions/chat...");
-
-      // CALL BACKEND
+      // 2. Send to Backend
       const response = await axios.post('/.netlify/functions/chat', { 
         prompt: promptContext 
       });
 
-      console.log("Response received:", response);
-
-      if (response.data.candidates) {
+      if (response.data.candidates && response.data.candidates.length > 0) {
         const aiResponse = response.data.candidates[0].content.parts[0].text;
         setMessages(prev => [...prev, { role: 'model', text: aiResponse }]);
-      } else if (response.data.error) {
-        throw new Error("Backend Error: " + JSON.stringify(response.data.error));
       } else {
-        throw new Error("Empty response from server.");
+        setMessages(prev => [...prev, { role: 'model', text: "🌿 My leaves are rustling... I didn't quite catch that. Try again?" }]);
       }
 
     } catch (error) {
-      console.error("FULL ERROR DETAILS:", error);
-      
-      // DETERMINE THE REAL ERROR
-      let errorMessage = "Unknown Error";
-      if (error.response) {
-        // The server responded with a status code (404, 500, etc.)
-        errorMessage = `Server Error ${error.response.status}: ${JSON.stringify(error.response.data)}`;
-      } else if (error.request) {
-        // The request was made but no response received
-        errorMessage = "No response from server (Network/Timeout).";
-      } else {
-        errorMessage = error.message;
-      }
-
-      setMessages(prev => [...prev, { role: 'model', text: `❌ DEBUG INFO: ${errorMessage}` }]);
+      console.error("Chat Error:", error);
+      setMessages(prev => [...prev, { role: 'model', text: "⚠️ Connection error. Please check your internet." }]);
     } finally {
       setIsLoading(false);
     }
@@ -70,57 +67,150 @@ const ChatBot = () => {
 
   return (
     <>
+      {/* --- THE POP-UP BUBBLE --- */}
+      {!isOpen && showWelcome && (
+        <div style={{
+            position: 'fixed', bottom: '90px', right: '30px',
+            background: 'white', padding: '12px 20px', borderRadius: '20px 20px 0 20px',
+            boxShadow: '0 5px 20px rgba(0,0,0,0.15)', zIndex: 9998,
+            fontFamily: 'Segoe UI, sans-serif', fontSize: '0.95rem', fontWeight: '600', color: '#2e7d32',
+            animation: 'fadeInUp 0.5s ease-out forwards', border: '1px solid #e0e0e0',
+            display: 'flex', alignItems: 'center', gap: '8px'
+        }}>
+           <span>Hiii..! I am Leaf Bot 🌿</span>
+           <button onClick={(e) => {e.stopPropagation(); setShowWelcome(false)}} style={{border:'none', background:'transparent', cursor:'pointer', color:'#999'}}>
+             <FiX size={14}/>
+           </button>
+        </div>
+      )}
+
+      {/* --- THE FLOATING LEAF BUTTON --- */}
       <button 
         onClick={() => setIsOpen(!isOpen)}
         style={{
             position: 'fixed', bottom: '20px', right: '20px', 
-            width: '60px', height: '60px', borderRadius: '50%', 
-            background: 'linear-gradient(135deg, #FF512F, #DD2476)', // Changed color to signal Debug Mode
+            width: '65px', height: '65px', borderRadius: '50%', 
+            background: 'linear-gradient(135deg, #43e97b, #38f9d7)', // ✅ Nature Green Gradient
             color: 'white', border: 'none', 
             boxShadow: '0 4px 15px rgba(0,0,0,0.3)', 
-            cursor: 'pointer', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center'
+            cursor: 'pointer', zIndex: 9999, 
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            transition: 'transform 0.2s'
         }}
+        onMouseOver={(e) => e.currentTarget.style.transform = 'scale(1.1)'}
+        onMouseOut={(e) => e.currentTarget.style.transform = 'scale(1)'}
       >
-        {isOpen ? <FiX size={28}/> : <FiMessageSquare size={28}/>}
+        {isOpen ? <FiX size={30} color="#145a32"/> : (
+            // ✅ THE ANIMATED LEAF ICON
+            <div style={{animation: 'sway 3s ease-in-out infinite'}}>
+                <RiLeafLine size={32} color="#145a32" />
+            </div>
+        )}
       </button>
 
+      {/* --- THE CHAT WINDOW --- */}
       {isOpen && (
         <div style={{
-            position: 'fixed', bottom: '90px', right: '20px',
+            position: 'fixed', bottom: '100px', right: '20px',
             width: '350px', height: '500px', 
-            background: 'rgba(20, 20, 30, 0.95)',
+            background: 'rgba(255, 255, 255, 0.95)', // Lighter, cleaner background
             backdropFilter: 'blur(12px)', borderRadius: '20px',
-            border: '1px solid rgba(255,255,255,0.15)', 
+            border: '1px solid rgba(0,0,0,0.1)', 
             display: 'flex', flexDirection: 'column',
-            boxShadow: '0 10px 40px rgba(0,0,0,0.5)', zIndex: 9999, overflow: 'hidden'
+            boxShadow: '0 10px 40px rgba(0,0,0,0.2)', zIndex: 9999, overflow: 'hidden',
+            fontFamily: 'Segoe UI, sans-serif'
         }}>
-            <div style={{padding: '15px', background: '#DD2476', color: 'white', fontWeight:'bold'}}>
-                <FiCpu style={{marginRight:'10px'}}/> AirQI DEBUGGER
+            {/* Header */}
+            <div style={{
+                padding: '15px', background: 'linear-gradient(90deg, #43e97b, #38f9d7)', // Green Header
+                borderBottom: '1px solid rgba(0,0,0,0.05)', 
+                display: 'flex', alignItems: 'center', gap: '10px', color: '#145a32'
+            }}>
+                <div style={{background: 'rgba(255,255,255,0.4)', padding:'8px', borderRadius:'50%'}}>
+                    <RiLeafLine size={20}/>
+                </div>
+                <div>
+                    <div style={{fontWeight: 'bold', fontSize:'1rem'}}>Leaf Bot Assistant</div>
+                    <div style={{fontSize:'0.75rem', opacity:0.8, display:'flex', alignItems:'center', gap:'5px'}}>
+                        <span style={{width:'8px', height:'8px', background:'#145a32', borderRadius:'50%'}}></span> Online
+                    </div>
+                </div>
             </div>
 
-            <div style={{flex: 1, padding: '15px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '15px'}}>
+            {/* Messages Area */}
+            <div style={{flex: 1, padding: '15px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '15px', background: '#f9fbf9'}}>
                 {messages.map((msg, idx) => (
                     <div key={idx} style={{
                         alignSelf: msg.role === 'user' ? 'flex-end' : 'flex-start',
-                        background: msg.role === 'user' ? '#DD2476' : 'rgba(255,255,255,0.1)',
-                        padding: '10px', borderRadius: '10px', color: 'white', maxWidth: '80%', wordWrap: 'break-word'
+                        maxWidth: '85%', display: 'flex', flexDirection: 'column'
                     }}>
-                        {msg.text}
+                         <div style={{
+                            background: msg.role === 'user' ? '#2e7d32' : 'white', // Dark Green for User
+                            color: msg.role === 'user' ? 'white' : '#333',
+                            padding: '12px 16px', 
+                            borderRadius: msg.role === 'user' ? '15px 15px 0 15px' : '15px 15px 15px 0',
+                            fontSize: '0.9rem', lineHeight: '1.5',
+                            boxShadow: '0 2px 5px rgba(0,0,0,0.05)', border: msg.role === 'user' ? 'none' : '1px solid #eee'
+                        }}>
+                            {msg.text}
+                        </div>
                     </div>
                 ))}
-                {isLoading && <div style={{color:'white', marginLeft:'10px'}}>Testing Connection...</div>}
+                
+                {isLoading && (
+                    <div style={{alignSelf: 'flex-start', background: 'white', padding: '10px 15px', borderRadius: '15px 15px 15px 0', border:'1px solid #eee'}}>
+                         <div style={{display:'flex', gap:'5px', alignItems:'center', color:'#2e7d32', fontSize:'0.8rem'}}>
+                            <RiLeafLine className="spin-slow" />
+                            <span>Thinking...</span>
+                         </div>
+                    </div>
+                )}
                 <div ref={messagesEndRef} />
             </div>
 
-            <div style={{padding: '15px', display: 'flex', gap: '10px', background:'rgba(0,0,0,0.2)'}}>
+            {/* Input Area */}
+            <div style={{padding: '15px', borderTop: '1px solid #eee', display: 'flex', gap: '10px', background:'white'}}>
                 <input 
                     type="text" value={input} onChange={(e) => setInput(e.target.value)}
                     onKeyDown={(e) => e.key === 'Enter' && handleSend()}
-                    placeholder="Type 'test'..."
-                    style={{flex: 1, padding: '10px', borderRadius: '20px', border:'none', outline:'none'}}
+                    placeholder="Ask Leaf Bot..."
+                    style={{
+                        flex: 1, background: '#f5f5f5', border: '1px solid #e0e0e0', 
+                        color: '#333', padding: '12px', borderRadius: '25px', outline: 'none', fontSize:'0.95rem'
+                    }}
                 />
-                <button onClick={handleSend} style={{background: '#DD2476', color: 'white', border: 'none', borderRadius: '50%', width:'40px', height:'40px'}}><FiSend/></button>
+                <button onClick={handleSend} style={{
+                    background: '#2e7d32', border: 'none', width: '45px', height:'45px', 
+                    borderRadius: '50%', cursor: 'pointer', color: 'white', display:'flex', alignItems:'center', justifyContent:'center',
+                    transition: 'background 0.2s', boxShadow: '0 3px 10px rgba(46, 125, 50, 0.3)'
+                }}
+                onMouseOver={(e) => e.currentTarget.style.background = '#1b5e20'}
+                onMouseOut={(e) => e.currentTarget.style.background = '#2e7d32'}
+                >
+                    <FiSend size={18} style={{marginLeft:'-2px'}}/>
+                </button>
             </div>
+            
+            {/* --- CSS ANIMATIONS --- */}
+            <style>{`
+                @keyframes sway {
+                    0% { transform: rotate(0deg); }
+                    25% { transform: rotate(-10deg); }
+                    75% { transform: rotate(10deg); }
+                    100% { transform: rotate(0deg); }
+                }
+                @keyframes fadeInUp {
+                    from { opacity: 0; transform: translateY(10px); }
+                    to { opacity: 1; transform: translateY(0); }
+                }
+                .spin-slow {
+                    animation: spin 3s linear infinite;
+                }
+                @keyframes spin {
+                    from { transform: rotate(0deg); }
+                    to { transform: rotate(360deg); }
+                }
+            `}</style>
         </div>
       )}
     </>
