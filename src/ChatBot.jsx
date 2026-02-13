@@ -22,8 +22,9 @@ const ChatBot = () => {
     if (isOpen) setShowWelcome(false);
   }, [isOpen]);
 
-  // ✅ HELPER FUNCTION: Turns **text** into Bold Text
+  // ✅ SAFER TEXT RENDERER (Prevents crashes if text is empty)
   const renderText = (text) => {
+    if (!text) return ""; 
     return text.split(/(\*\*.*?\*\*)/g).map((part, index) => {
       if (part.startsWith('**') && part.endsWith('**')) {
         return <strong key={index}>{part.slice(2, -2)}</strong>;
@@ -41,26 +42,32 @@ const ChatBot = () => {
     setIsLoading(true);
 
     try {
-      // ✅ UPDATED SYSTEM INSTRUCTIONS: Added Founder Info
+      // ✅ 1. Check if we are on Localhost (Warn the user)
+      if (window.location.hostname === "localhost") {
+         throw new Error("Chat only works on the Live Netlify Site, not Localhost!");
+      }
+
+      // ✅ 2. Construct the Prompt
       const promptContext = `
       SYSTEM INSTRUCTIONS:
       You are "Leaf Bot", a friendly AI assistant for the AirQI Dashboard.
       
       YOUR IDENTITY:
       - Name: Leaf Bot 🌿
-      - Creator: You were created by "Aditya Roy and his AirQI Team". (Always mention this if asked who made you or who is your founder).
-      - Purpose: To help users understand air quality, weather, and nature.
-      - Tone: Friendly, organic, and helpful. 
+      - Creator: "Aditya Roy and his AirQI Team".
+      - Purpose: Help users with air quality and weather.
+      - Tone: Friendly, organic. Use emojis 🌿.
       
-      FORMATTING RULES:
-      - Keep answers short and easy to read.
-      - Use **bold** for important words.
+      FORMATTING:
+      - Use **bold** for key words.
+      - Keep answers short.
       
       CONVERSATION HISTORY:
       ${messages.map(m => `${m.role === 'user' ? 'User' : 'AI'}: ${m.text}`).join('\n')}
       User: ${userText}
       AI:`;
 
+      // ✅ 3. Send to Backend
       const response = await axios.post('/.netlify/functions/chat', { 
         prompt: promptContext 
       });
@@ -69,12 +76,19 @@ const ChatBot = () => {
         const aiResponse = response.data.candidates[0].content.parts[0].text;
         setMessages(prev => [...prev, { role: 'model', text: aiResponse }]);
       } else {
-        setMessages(prev => [...prev, { role: 'model', text: "🌿 My leaves are rustling... I didn't quite catch that. Try again?" }]);
+        setMessages(prev => [...prev, { role: 'model', text: "🌿 I couldn't process that. Try again?" }]);
       }
 
     } catch (error) {
       console.error("Chat Error:", error);
-      setMessages(prev => [...prev, { role: 'model', text: "⚠️ Connection error. Please check your internet." }]);
+      
+      // ✅ 4. Show a Helpful Error Message
+      let errorMsg = "⚠️ Connection error. Please check your internet.";
+      if (error.message.includes("Localhost")) {
+        errorMsg = "⚠️ Testing Error: You must Deploy to Netlify to chat! (Backend doesn't run on localhost)";
+      }
+      
+      setMessages(prev => [...prev, { role: 'model', text: errorMsg }]);
     } finally {
       setIsLoading(false);
     }
@@ -166,7 +180,6 @@ const ChatBot = () => {
                             fontSize: '0.9rem', lineHeight: '1.5',
                             boxShadow: '0 2px 5px rgba(0,0,0,0.05)', border: msg.role === 'user' ? 'none' : '1px solid #eee'
                         }}>
-                            {/* ✅ CALLING THE HELPER FUNCTION HERE */}
                             {renderText(msg.text)}
                         </div>
                     </div>
