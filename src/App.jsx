@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react';
 import './App.css';
 import SunCalc from 'suncalc';
+import ChatBot from './ChatBot';
 import { format, toZonedTime } from 'date-fns-tz';
 import { FiSearch, FiWind, FiActivity, FiNavigation, FiMapPin, FiInfo, FiDatabase, FiTarget, FiCalendar, FiDroplet } from 'react-icons/fi';
 import { LineChart, Line, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
@@ -677,6 +678,7 @@ function App() {
       </div>
 
       <footer className="footer">© 2026 AirQI Project. Global Atmospheric Data.</footer>
+      <ChatBot />
     </div>
   );
 }
