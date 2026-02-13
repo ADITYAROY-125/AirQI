@@ -9,10 +9,8 @@ import { LineChart, Line, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip,
 import axios from 'axios';
 import { ComposableMap, Geographies, Geography, Marker } from "react-simple-maps";
 
-// ✅ 1. UPDATED MAP SOURCE: High-quality India TopoJSON (includes J&K/Ladakh)
-const INDIA_TOPO_JSON = "https://raw.githubusercontent.com/deldersveld/topojson/master/countries/india/india-states.json";
-// Fallback for world (if needed later)
-const WORLD_TOPO_JSON = "https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json";
+// ✅ Use this reliable CDN link (The other one was breaking)
+const GEO_URL = "https://gist.githubusercontent.com/dwannat/24d6e65c6770faad006e3f613036deb4/raw/world-india.map.json";
 
 const RESEARCH_STATIONS = [
   { name: "IIT Delhi (Safdarjung)", lat: 28.545, lon: 77.192, country: "India" },
@@ -362,51 +360,65 @@ function App() {
                 </div>
                 
                 {/* ✅ 2. FIXED MAP WIDGET: Uses India TopoJSON + Proper Centering */}
-                <div className="side-widget">
-                    <h3><FiMapPin/> Location Map</h3>
-                    <div style={{fontSize: '0.85rem', opacity: 0.9, marginBottom: '10px', display: 'flex', justifyContent: 'space-between', background: 'rgba(255,255,255,0.1)', padding: '8px', borderRadius: '8px'}}>
-                        <span>Lat: <strong>{locationData.lat.toFixed(2)}°</strong></span>
-                        <span>Lon: <strong>{locationData.lon.toFixed(2)}°</strong></span>
-                    </div>
+{/* Location Map Widget */}
+<div className="side-widget">
+    <h3><FiMapPin/> Location Map</h3>
+    <div style={{
+        fontSize: '0.85rem', opacity: 0.9, marginBottom: '10px', 
+        display: 'flex', justifyContent: 'space-between', 
+        background: 'rgba(255,255,255,0.1)', padding: '8px', borderRadius: '8px'
+    }}>
+        <span>Lat: <strong>{locationData.lat.toFixed(2)}°</strong></span>
+        <span>Lon: <strong>{locationData.lon.toFixed(2)}°</strong></span>
+    </div>
 
-                    <div className="map-container" style={{ width: "100%", height: "250px", overflow: "hidden", borderRadius: "10px", background: "#2b2d42" }}>
-                        <ComposableMap 
-                            projection="geoMercator" 
-                            projectionConfig={{ 
-                                scale: 1000, // ✅ Fixed Zoom
-                                center: [78.9629, 22.5937] // ✅ Centered on Central India
+    <div className="map-container" style={{ 
+        width: "100%", height: "250px", overflow: "hidden", 
+        borderRadius: "10px", background: "#2b2d42", position: "relative" 
+    }}>
+        <ComposableMap 
+        projection="geoMercator" 
+        projectionConfig={{ 
+            scale: 600, // ✅ FIXED ZOOM: Keeps the "distance" same for everywhere
+            center: [locationData.lon, locationData.lat] // ✅ AUTO-CENTER: Always moves the camera to the city
+        }}
+        width={400} height={250}
+        style={{ width: "100%", height: "100%" }}
+    >
+            <Geographies geography={GEO_URL}>
+                {({ geographies }) => geographies.map(geo => {
+                    const isIndia = geo.properties.name === "India";
+                    return (
+                        <Geography 
+                            key={geo.rsmKey} 
+                            geography={geo} 
+                            fill={isIndia ? "#D6D6DA" : "#4a4e69"} 
+                            stroke="#ffffff" 
+                            strokeWidth={0.5} 
+                            style={{
+                                default: { outline: "none" }, 
+                                hover: { fill: "#FF512F", outline: "none" },
+                                pressed: { outline: "none" }
                             }}
-                            width={400} height={250}
-                            style={{ width: "100%", height: "100%" }}
-                        >
-                            <Geographies geography={INDIA_TOPO_JSON}>
-                                {({ geographies }) => geographies.map(geo => {
-                                    // Highlight state logic could go here
-                                    return (
-                                        <Geography 
-                                            key={geo.rsmKey} 
-                                            geography={geo} 
-                                            fill="#D6D6DA" stroke="#ffffff" strokeWidth={0.5} 
-                                            style={{
-                                                default: { outline: "none" }, 
-                                                hover: { fill: "#FF512F", outline: "none" },
-                                                pressed: { outline: "none" }
-                                            }}
-                                        />
-                                    );
-                                })}
-                            </Geographies>
-                            {/* Marker for current location */}
-                            <Marker coordinates={[locationData.lon, locationData.lat]}>
-                                <circle r={8} fill="#FF512F" stroke="#fff" strokeWidth={2} />
-                                <text textAnchor="middle" y={-15} style={{ fontFamily: "system-ui", fill: "#fff", fontSize: "12px", fontWeight:"bold", textShadow: "0px 0px 3px black" }}>
-                                    {locationData.name.split(',')[0]}
-                                </text>
-                            </Marker>
-                        </ComposableMap>
-                    </div>
-                </div>
-
+                        />
+                    );
+                })}
+            </Geographies>
+            
+            {/* The Red Dot Marker - Always moves to the correct city */}
+            <Marker coordinates={[locationData.lon, locationData.lat]}>
+                <circle r={6} fill="#FF512F" stroke="#fff" strokeWidth={2} />
+                <circle r={12} fill="#FF512F" opacity={0.3} />
+                <text textAnchor="middle" y={-15} style={{ 
+                    fontFamily: "sans-serif", fill: "#fff", fontSize: "12px", 
+                    fontWeight:"bold", textShadow: "0px 1px 3px rgba(0,0,0,0.8)" 
+                }}>
+                    {locationData.name.split(',')[0]}
+                </text>
+            </Marker>
+        </ComposableMap>
+    </div>
+</div>
                 <div className="side-widget">
                     <h3><FiInfo/> Air Facts</h3>
                     <div style={{fontSize:'0.9rem', lineHeight:'1.5'}}>
