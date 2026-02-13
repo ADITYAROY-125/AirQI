@@ -9,13 +9,15 @@ import { LineChart, Line, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip,
 import axios from 'axios';
 import { ComposableMap, Geographies, Geography, Marker } from "react-simple-maps";
 
-// Reliable Map Source
-const GEO_URL = "https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json";
+// ✅ 1. UPDATED MAP SOURCE: High-quality India TopoJSON (includes J&K/Ladakh)
+const INDIA_TOPO_JSON = "https://raw.githubusercontent.com/deldersveld/topojson/master/countries/india/india-states.json";
+// Fallback for world (if needed later)
+const WORLD_TOPO_JSON = "https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json";
 
 const RESEARCH_STATIONS = [
-  { name: "IIT Delhi (Safdarjung)", lat: 28.545, lon: 77.192, country: "IN" },
-  { name: "Mauna Loa Observatory", lat: 19.536, lon: -155.576, country: "US" },
-  { name: "Antarctica (McMurdo)", lat: -77.846, lon: 166.676, country: "AQ" }
+  { name: "IIT Delhi (Safdarjung)", lat: 28.545, lon: 77.192, country: "India" },
+  { name: "NIT Rourkela", lat: 22.25, lon: 84.90, country: "India" }, // Added your location
+  { name: "Mauna Loa Observatory", lat: 19.536, lon: -155.576, country: "US" }
 ];
 
 const AIR_FACTS = [
@@ -25,7 +27,6 @@ const AIR_FACTS = [
   "Cold air traps pollutants near the ground (Thermal Inversion).",
   "Nitrogen Dioxide (NO₂) peaks during rush hours."
 ];
-
 
 // --- SMART ADVICE LOGIC ---
 const getSmartAdvice = (pm25, weatherCode, temp) => {
@@ -53,12 +54,14 @@ function App() {
   const [locationData, setLocationData] = useState(null);
   const [chartData, setChartData] = useState([]);
   const [forecastData, setForecastData] = useState([]);
-  // NEW: State for historical comparison
-  const [acHours, setAcHours] = useState(4); // Default 4 hours of AC usage
+  
+  // States for widgets
+  const [acHours, setAcHours] = useState(4); 
   const [historicalData, setHistoricalData] = useState(null);
   
   const [atmosphericState, setAtmosphericState] = useState({ isDay: true, sunAltitudePct: 20, isCloudy: false, isRain: false, isWindy: false, isHazy: false });
-  const [mapView, setMapView] = useState({ center: [80, 22], zoom: 400 }); 
+  // Map View State
+  const [mapView, setMapView] = useState({ center: [78.9, 22.5], zoom: 800 }); 
   const [currentFact, setCurrentFact] = useState(AIR_FACTS[0]);
   const [exposureTime, setExposureTime] = useState(1); 
 
@@ -84,20 +87,17 @@ function App() {
     fetchRealLocation(null, cityObj);
   };
 
-  // --- NEW: HISTORICAL WEATHER FETCHER ---
+  // --- HISTORICAL WEATHER FETCHER ---
   const fetchHistoricalData = async (lat, lon) => {
     try {
-        // 1. Calculate date 20 years ago
         const date = new Date();
         const currentHour = date.getHours();
-        date.setFullYear(date.getFullYear() - 20); // Go back 20 years
+        date.setFullYear(date.getFullYear() - 20); 
         const pastDateString = date.toISOString().split('T')[0];
 
-        // 2. Fetch Historical Data from Open-Meteo Archive
         const url = `https://archive-api.open-meteo.com/v1/archive?latitude=${lat}&longitude=${lon}&start_date=${pastDateString}&end_date=${pastDateString}&hourly=temperature_2m&timezone=auto`;
         
         const res = await axios.get(url);
-        // The API returns an array of 24 hours. We pick the current hour index.
         const pastTemp = res.data.hourly.temperature_2m[currentHour];
         
         setHistoricalData({
@@ -127,8 +127,12 @@ function App() {
             name = loc.name; country = loc.country;
         }
 
-        // --- FIXED: Map updates correctly now ---
-        setMapView({ center: [lon, lat], zoom: 800 }); 
+        // ✅ Updated Map Centering Logic
+        // If it looks like India, center on India. Else, center on the city.
+        setMapView({ 
+            center: [78.9629, 22.5937], // Always center on India for this specific map view
+            zoom: 1000 
+        }); 
 
         const weatherUrl = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,apparent_temperature,weather_code,wind_speed_10m,wind_direction_10m,precipitation&daily=weather_code,temperature_2m_max,temperature_2m_min&timezone=auto`;
         const airUrl = `https://air-quality-api.open-meteo.com/v1/air-quality?latitude=${lat}&longitude=${lon}&current=pm10,pm2_5,nitrogen_dioxide,aerosol_optical_depth,sulphur_dioxide&hourly=pm10,pm2_5,nitrogen_dioxide,aerosol_optical_depth&timezone=auto`;
@@ -139,7 +143,6 @@ function App() {
         const currentW = w.current;
         const currentAir = a.current;
 
-        // Fetch Historical Comparison
         fetchHistoricalData(lat, lon);
 
         const hourlyData = a.hourly.time.slice(0, 24).map((t, i) => ({
@@ -358,40 +361,52 @@ function App() {
                     </ul>
                 </div>
                 
+                {/* ✅ 2. FIXED MAP WIDGET: Uses India TopoJSON + Proper Centering */}
                 <div className="side-widget">
                     <h3><FiMapPin/> Location Map</h3>
-
                     <div style={{fontSize: '0.85rem', opacity: 0.9, marginBottom: '10px', display: 'flex', justifyContent: 'space-between', background: 'rgba(255,255,255,0.1)', padding: '8px', borderRadius: '8px'}}>
                         <span>Lat: <strong>{locationData.lat.toFixed(2)}°</strong></span>
                         <span>Lon: <strong>{locationData.lon.toFixed(2)}°</strong></span>
                     </div>
 
-                    <div className="map-container">
+                    <div className="map-container" style={{ width: "100%", height: "250px", overflow: "hidden", borderRadius: "10px", background: "#2b2d42" }}>
                         <ComposableMap 
                             projection="geoMercator" 
                             projectionConfig={{ 
-                                scale: mapView.zoom,
-                                center: mapView.center
+                                scale: 1000, // ✅ Fixed Zoom
+                                center: [78.9629, 22.5937] // ✅ Centered on Central India
                             }}
                             width={400} height={250}
+                            style={{ width: "100%", height: "100%" }}
                         >
-                            <Geographies geography={GEO_URL}>
-                                {({ geographies }) => geographies.map(geo => (
-                                    <Geography key={geo.rsmKey} geography={geo} 
-                                        fill="#D6D6DA" stroke="#333" strokeWidth={0.5} 
-                                        style={{default: { outline: "none" }, hover: { fill: "#F53", outline: "none" }}}
-                                    />
-                                ))}
+                            <Geographies geography={INDIA_TOPO_JSON}>
+                                {({ geographies }) => geographies.map(geo => {
+                                    // Highlight state logic could go here
+                                    return (
+                                        <Geography 
+                                            key={geo.rsmKey} 
+                                            geography={geo} 
+                                            fill="#D6D6DA" stroke="#ffffff" strokeWidth={0.5} 
+                                            style={{
+                                                default: { outline: "none" }, 
+                                                hover: { fill: "#FF512F", outline: "none" },
+                                                pressed: { outline: "none" }
+                                            }}
+                                        />
+                                    );
+                                })}
                             </Geographies>
+                            {/* Marker for current location */}
                             <Marker coordinates={[locationData.lon, locationData.lat]}>
-                                <circle r={8} fill="#FF5533" stroke="#fff" strokeWidth={2} />
-                                <text textAnchor="middle" y={-15} style={{ fontFamily: "system-ui", fill: "#333", fontSize: "12px", fontWeight:"bold", textShadow: "0px 0px 3px white" }}>
+                                <circle r={8} fill="#FF512F" stroke="#fff" strokeWidth={2} />
+                                <text textAnchor="middle" y={-15} style={{ fontFamily: "system-ui", fill: "#fff", fontSize: "12px", fontWeight:"bold", textShadow: "0px 0px 3px black" }}>
                                     {locationData.name.split(',')[0]}
                                 </text>
                             </Marker>
                         </ComposableMap>
                     </div>
                 </div>
+
                 <div className="side-widget">
                     <h3><FiInfo/> Air Facts</h3>
                     <div style={{fontSize:'0.9rem', lineHeight:'1.5'}}>
@@ -504,12 +519,11 @@ function App() {
                         </tbody>
                     </table>
                 </div>
-
             </div>
 
             <div className="right-column">
                 
-                {/* --- NEW: CLIMATE TIME MACHINE WIDGET --- */}
+                {/* CLIMATE TIME MACHINE WIDGET */}
                 {locationData && historicalData && (
                     <div className="side-widget" style={{background: 'linear-gradient(135deg, #1e3c72 0%, #2a5298 100%)', border: '1px solid rgba(255,255,255,0.2)'}}>
                         <h3><FiCalendar/> Climate Time Machine</h3>
@@ -552,13 +566,7 @@ function App() {
                         {/* VISUAL BAR */}
                         <div style={{width: '100%', height: '8px', background: 'rgba(255,255,255,0.1)', borderRadius: '4px', marginTop: '10px', position: 'relative'}}>
                             <div style={{
-                                position: 'absolute',
-                                left: '50%',
-                                top: 0,
-                                bottom: 0,
-                                width: '2px',
-                                background: '#fff',
-                                opacity: 0.5
+                                position: 'absolute', left: '50%', top: 0, bottom: 0, width: '2px', background: '#fff', opacity: 0.5
                             }}></div>
                             <div style={{
                                 position: 'absolute',
@@ -623,53 +631,52 @@ function App() {
                         *Based on Berkeley Earth equivalence (22µg PM2.5 ≈ 1 cig)
                     </div>
                 </div>
-                                        <div className="side-widget ac-widget" style={{background: 'linear-gradient(135deg, #2c3e50 0%, #000000 100%)', border: '1px solid rgba(255,255,255,0.2)'}}>
-    <h3><FiWind/> AC vs. Trees</h3>
-    
-    <div style={{fontSize: '0.9rem', marginBottom: '15px', opacity: 0.9}}>
-        If you run a <strong>1.5 Ton AC</strong> for:
-    </div>
-
-    {/* INPUT SLIDER */}
-    <div style={{background:'rgba(255,255,255,0.1)', padding:'10px', borderRadius:'10px', marginBottom: '15px'}}>
-        <div style={{display:'flex', justifyContent:'space-between', marginBottom:'5px'}}>
-            <span style={{fontWeight:'bold'}}>{acHours} Hours / Day</span>
-            <span style={{fontSize:'0.8rem', opacity:0.7}}>Daily Usage</span>
-        </div>
-        <input 
-            type="range" min="1" max="24" value={acHours} 
-            onChange={(e) => setAcHours(e.target.value)}
-            style={{width: '100%', cursor: 'pointer', accentColor: '#10b981'}}
-        />
-    </div>
-
-    {/* CALCULATIONS */}
-    <div style={{display: 'flex', gap: '10px', marginBottom: '15px'}}>
-        {/* CO2 EMISSION */}
-        <div style={{flex: 1, background: 'rgba(239, 68, 68, 0.2)', padding: '10px', borderRadius: '8px', textAlign: 'center', border: '1px solid rgba(239, 68, 68, 0.5)'}}>
-            <div style={{fontSize: '1.2rem', fontWeight: 'bold', color: '#fca5a5'}}>
-                {(acHours * 1.5 * 0.85 * 30).toFixed(0)} kg
-            </div>
-            <div style={{fontSize: '0.7rem', opacity: 0.8}}>CO₂ per Month</div>
-        </div>
-
-        {/* TREES NEEDED */}
-        <div style={{flex: 1, background: 'rgba(16, 185, 129, 0.2)', padding: '10px', borderRadius: '8px', textAlign: 'center', border: '1px solid rgba(16, 185, 129, 0.5)'}}>
-            <div style={{fontSize: '1.2rem', fontWeight: 'bold', color: '#6ee7b7'}}>
-                {Math.ceil((acHours * 1.5 * 0.85 * 365) / 25)} 🌳
-            </div>
-            <div style={{fontSize: '0.7rem', opacity: 0.8}}>Trees to Offset (Yr)</div>
-        </div>
-    </div>
-
-    {/* RECOMMENDATION */}
-    <div style={{fontSize: '0.8rem', lineHeight: '1.4', background: 'rgba(255,255,255,0.05)', padding: '10px', borderRadius: '8px'}}>
-        <strong>Recommendation:</strong> To fix this, you need <strong>Outdoor Trees</strong> (Peepal, Neem, Banyan). <br/>
-        <span style={{opacity:0.7, fontSize:'0.75rem', display:'block', marginTop:'5px'}}>*Indoor plants (Snake Plant) clean air but cannot capture this much carbon.</span>
-    </div>
-</div>
                 
-            </div>
+                {/* ✅ 3. FIXED AC WIDGET (Nested correctly inside right-column) */}
+                <div className="side-widget ac-widget" style={{background: 'linear-gradient(135deg, #2c3e50 0%, #000000 100%)', border: '1px solid rgba(255,255,255,0.2)'}}>
+                    <h3><FiWind/> AC vs. Trees</h3>
+                    
+                    <div style={{fontSize: '0.9rem', marginBottom: '15px', opacity: 0.9}}>
+                        If you run a <strong>1.5 Ton AC</strong> for:
+                    </div>
+
+                    <div style={{background:'rgba(255,255,255,0.1)', padding:'10px', borderRadius:'10px', marginBottom: '15px'}}>
+                        <div style={{display:'flex', justifyContent:'space-between', marginBottom:'5px'}}>
+                            <span style={{fontWeight:'bold'}}>{acHours} Hours / Day</span>
+                            <span style={{fontSize:'0.8rem', opacity:0.7}}>Daily Usage</span>
+                        </div>
+                        <input 
+                            type="range" min="1" max="24" value={acHours} 
+                            onChange={(e) => setAcHours(e.target.value)}
+                            style={{width: '100%', cursor: 'pointer', accentColor: '#10b981'}}
+                        />
+                    </div>
+
+                    <div style={{display: 'flex', gap: '10px', marginBottom: '15px'}}>
+                        {/* CO2 EMISSION */}
+                        <div style={{flex: 1, background: 'rgba(239, 68, 68, 0.2)', padding: '10px', borderRadius: '8px', textAlign: 'center', border: '1px solid rgba(239, 68, 68, 0.5)'}}>
+                            <div style={{fontSize: '1.2rem', fontWeight: 'bold', color: '#fca5a5'}}>
+                                {(acHours * 1.5 * 0.85 * 30).toFixed(0)} kg
+                            </div>
+                            <div style={{fontSize: '0.7rem', opacity: 0.8}}>CO₂ per Month</div>
+                        </div>
+
+                        {/* TREES NEEDED */}
+                        <div style={{flex: 1, background: 'rgba(16, 185, 129, 0.2)', padding: '10px', borderRadius: '8px', textAlign: 'center', border: '1px solid rgba(16, 185, 129, 0.5)'}}>
+                            <div style={{fontSize: '1.2rem', fontWeight: 'bold', color: '#6ee7b7'}}>
+                                {Math.ceil((acHours * 1.5 * 0.85 * 365) / 25)} 🌳
+                            </div>
+                            <div style={{fontSize: '0.7rem', opacity: 0.8}}>Trees to Offset (Yr)</div>
+                        </div>
+                    </div>
+
+                    <div style={{fontSize: '0.8rem', lineHeight: '1.4', background: 'rgba(255,255,255,0.05)', padding: '10px', borderRadius: '8px'}}>
+                        <strong>Recommendation:</strong> To fix this, you need <strong>Outdoor Trees</strong> (Peepal, Neem, Banyan). <br/>
+                        <span style={{opacity:0.7, fontSize:'0.75rem', display:'block', marginTop:'5px'}}>*Indoor plants (Snake Plant) clean air but cannot capture this much carbon.</span>
+                    </div>
+                </div>
+
+            </div> {/* End Right Column */}
 
           </div>
         ) : (
