@@ -1,36 +1,33 @@
 // netlify/functions/chat.js
 exports.handler = async function(event, context) {
-  // 1. Debug Headers
-  const headers = {
-    "Access-Control-Allow-Origin": "*",
-    "Content-Type": "application/json"
-  };
-
-  // 2. Handle POST check
+  // 1. Check Request Method
   if (event.httpMethod !== "POST") {
-    return { statusCode: 405, headers, body: "Method Not Allowed" };
+    return { statusCode: 405, body: "Method Not Allowed" };
   }
 
   try {
-    const body = JSON.parse(event.body);
-    const prompt = body.prompt || "Hello";
-    
-    // 3. CHECK API KEY
-    const API_KEY = process.env.GEMINI_API_KEY;
-    if (!API_KEY) {
-      console.log("CRITICAL: API Key is missing");
-      return { 
-        statusCode: 500, 
-        headers,
-        body: JSON.stringify({ error: "Configuration Error: API Key is missing in Netlify." }) 
-      };
+    // 2. Parse Body
+    let prompt;
+    try {
+      const body = JSON.parse(event.body);
+      prompt = body.prompt;
+    } catch (e) {
+      return { statusCode: 400, body: JSON.stringify({ error: "Invalid JSON body" }) };
     }
 
-    // 4. CALL GOOGLE (With explicit error catching)
-    console.log("Calling Gemini 1.5 Flash...");
+    // 3. Check API Key
+    const API_KEY = process.env.GEMINI_API_KEY;
+    if (!API_KEY) {
+      console.error("CRITICAL: GEMINI_API_KEY is missing from Netlify Environment Variables");
+      return { statusCode: 500, body: JSON.stringify({ error: "Server Configuration Error: API Key missing" }) };
+    }
+
+    // 4. Call Google Gemini 2.0 Flash (Your Stable Model)
+    // ✅ CORRECTED: Using 'gemini-2.0-flash' which is in your approved list
+    console.log("Sending request to Google Gemini 2.0 Flash...");
     
     const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1/models/gemini-2.5-flash:generateContent?key=${API_KEY}`,
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${API_KEY}`,
       {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -42,28 +39,26 @@ exports.handler = async function(event, context) {
 
     const data = await response.json();
 
-    // 5. Check if Google returned an error
-    if (data.error) {
-       console.log("Google Error:", data.error);
-       return { 
-         statusCode: 500, 
-         headers,
-         body: JSON.stringify({ error: `Google API Error: ${data.error.message}` }) 
-       };
+    // 5. Check if Google rejected the key or request
+    if (!response.ok) {
+      console.error("Google API Error:", data);
+      return { 
+        statusCode: response.status, 
+        body: JSON.stringify({ error: `Google Error: ${data.error?.message || "Unknown API Error"}` }) 
+      };
     }
 
+    // 6. Success
     return {
       statusCode: 200,
-      headers,
       body: JSON.stringify(data),
     };
 
   } catch (error) {
-    console.log("Crash Error:", error);
+    console.error("Server Crash:", error);
     return {
       statusCode: 500,
-      headers,
-      body: JSON.stringify({ error: `Server Crash: ${error.message}` }),
+      body: JSON.stringify({ error: `Backend Crash: ${error.message}` }),
     };
   }
 };
