@@ -1,12 +1,12 @@
 // netlify/functions/chat.js
 exports.handler = async function(event, context) {
-  // 1. Check Request Method
+  // 1. Only allow POST
   if (event.httpMethod !== "POST") {
     return { statusCode: 405, body: "Method Not Allowed" };
   }
 
   try {
-    // 2. Parse Body
+    // 2. Parse the User's Input
     let prompt;
     try {
       const body = JSON.parse(event.body);
@@ -15,36 +15,39 @@ exports.handler = async function(event, context) {
       return { statusCode: 400, body: JSON.stringify({ error: "Invalid JSON body" }) };
     }
 
-    // 3. Check API Key
+    // 3. Get API Key
     const API_KEY = process.env.GEMINI_API_KEY;
     if (!API_KEY) {
-      console.error("CRITICAL: GEMINI_API_KEY is missing from Netlify Environment Variables");
-      return { statusCode: 500, body: JSON.stringify({ error: "Server Configuration Error: API Key missing" }) };
+      return { statusCode: 500, body: JSON.stringify({ error: "Server Error: API Key missing" }) };
     }
 
-    // 4. Call Google Gemini 2.0 Flash (Your Stable Model)
-    // ✅ CORRECTED: Using 'gemini-2.0-flash' which is in your approved list
-    console.log("Sending request to Google Gemini 2.0 Flash...");
-    
+    // ✅ 4. THE FIX: Using 'v1' Endpoint & Structured Payload
+    console.log("Sending request to Gemini 2.5 Flash (v1)...");
+
     const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${API_KEY}`,
+      `https://generativelanguage.googleapis.com/v1/models/gemini-2.5-flash:generateContent?key=${API_KEY}`,
       {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          contents: [{ parts: [{ text: prompt }] }]
+          contents: [
+            {
+              role: "user",
+              parts: [{ text: prompt }]
+            }
+          ]
         })
       }
     );
 
     const data = await response.json();
 
-    // 5. Check if Google rejected the key or request
+    // 5. Handle Errors (Quota, Model Not Found, etc.)
     if (!response.ok) {
       console.error("Google API Error:", data);
       return { 
         statusCode: response.status, 
-        body: JSON.stringify({ error: `Google Error: ${data.error?.message || "Unknown API Error"}` }) 
+        body: JSON.stringify({ error: data.error || data }) 
       };
     }
 
